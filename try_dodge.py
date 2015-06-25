@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+"""Work-in-progress
+"""
 
 import riot
 
