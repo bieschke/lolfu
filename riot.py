@@ -52,6 +52,10 @@ class RiotAPI(object):
         """Return all champions."""
         return self.call('/api/lol/static-data/na/v1.2/champion')
 
+    def match(self, match_id):
+        """Return the requested match."""
+        return self.call('/api/lol/na/v2.2/match/%d' % match_id)
+
     def matchhistory(self, summoner_id, begin_index=0, end_index=15):
         """Return the summoner's ranked 5s match history."""
         return self.call('/api/lol/na/v2.2/matchhistory/%s' % summoner_id,

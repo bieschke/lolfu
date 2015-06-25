@@ -27,14 +27,12 @@ def main():
                 break
             end_index += step
             for match in matches:
+                # the matchhistory endpoint does not include information in all
+                # participants within the match, to receive those we issue a second
+                # call to the match endpoint.
+                match = api.match(match['matchId'])
                 # create a mapping of participant ids to summoner ids
                 summoner_ids = {}
-                # FIXME: there is currently a bug in Riot's API such that only a single
-                # participant's information is returned  rather than all 10
-                # https://developer.riotgames.com/discussion/community-discussion/show/AfXa2Ed6
-                #print len(match['participantIdentities'])
-                #print len(match['participants'])
-                #print
                 for identity in match['participantIdentities']:
                     participant_id = identity['participantId']
                     summoner_id = identity['player']['summonerId']
