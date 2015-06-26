@@ -14,6 +14,7 @@ def main():
 
     known_summoner_ids = api.bootstrap_summoner_ids.copy()
     remaining_summoner_ids = known_summoner_ids.copy()
+    known_match_ids = set()
     while remaining_summoner_ids:
         summoner_id = remaining_summoner_ids.pop()
         begin_index = 0
@@ -25,12 +26,16 @@ def main():
             matches = api.matchhistory(summoner_id, begin_index, end_index).get('matches', [])
             if not matches:
                 break
-            end_index += step
+            begin_index += step
             for match in matches:
+                match_id = match['matchId']
+                if match_id in known_match_ids:
+                    continue
+                known_match_ids.add(match_id)
                 # the matchhistory endpoint does not include information in all
                 # participants within the match, to receive those we issue a second
                 # call to the match endpoint.
-                match = api.match(match['matchId'])
+                match = api.match(match_id)
                 # create a mapping of participant ids to summoner ids
                 summoner_ids = {}
                 for identity in match['participantIdentities']:
@@ -43,7 +48,7 @@ def main():
                     stats = participant['stats']
                     timeline = participant['timeline']
                     output_format = (
-                        ('match_id', match['matchId']),
+                        ('match_id', match_id),
                         ('summoner_id', summoner_id),
                         ('champion_id', participant['championId']),
                         ('tier', participant['highestAchievedSeasonTier']),
