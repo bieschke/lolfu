@@ -14,6 +14,45 @@ import time
 import urllib
 import urllib2
 
+# Riot's lanes
+RIOT_TOP = 'TOP'
+RIOT_JUNGLE = 'JUNGLE'
+RIOT_MIDDLE = 'MIDDLE'
+RIOT_BOT = 'BOT'
+RIOT_LANES = (RIOT_TOP, RIOT_JUNGLE, RIOT_MIDDLE, RIOT_BOT)
+
+# Riot's roles
+RIOT_NONE = 'NONE'
+RIOT_SOLO = 'SOLO'
+RIOT_DUO = 'DUO'
+RIOT_DUO_CARRY = 'DUO_CARRY'
+RIOT_DUO_SUPPORT = 'DUO_SUPPORT'
+RIOT_ROLES = (RIOT_NONE, RIOT_SOLO, RIOT_DUO, RIOT_DUO_CARRY, RIOT_DUO_SUPPORT)
+
+# Non-Riot sanctioned positions
+TOP = 'TOP'
+MID = 'MID'
+JUNGLE = 'JUNGLE'
+ADC = 'ADC'
+SUPPORT = 'SUPPORT'
+BOT = 'BOT'
+POSITIONS = (TOP, MID, JUNGLE, ADC, SUPPORT, BOT)
+
+
+def position(lane, role):
+    """Return the position for the given lane and role."""
+    if lane == RIOT_TOP:
+        return TOP
+    elif lane == RIOT_JUNGLE:
+        return JUNGLE
+    elif lane == RIOT_MIDDLE:
+        return MID
+    elif lane == RIOT_BOT and role == RIOT_DUO_CARRY:
+        return ADC
+    elif lane == RIOT_BOT and role == RIOT_DUO_SUPPORT:
+        return SUPPORT
+    return BOT
+
 
 class RiotAPI(object):
 
