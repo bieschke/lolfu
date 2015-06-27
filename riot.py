@@ -92,11 +92,12 @@ class RiotAPI(object):
                 request = urllib2.urlopen(url)
             except urllib2.HTTPError as e:
                 # https://developer.riotgames.com/docs/response-codes
+                # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
                 if e.code == 429:
                     # retry after we're within our rate limit
                     time.sleep(float(e.headers['Retry-After']) + 1)
                     continue
-                elif e.code in (500, 503):
+                elif e.code in (500, 502, 503, 504):
                     # retry when the Riot API is having (hopefully temporary) difficulties
                     time.sleep(retry_seconds)
                     retry_seconds *= 2
