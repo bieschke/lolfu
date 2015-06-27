@@ -10,7 +10,7 @@ encountering these types of server failures.
 
 The <code>match_simple_collector.py</code> program walks a starting set of summoners,
 retrieves complete match history for each of those summoners, and then continues to spider
-the observed summoners from those matches, outputting CSV data to stdout for all of
+the observed summoners from those matches, outputting ARFF data to stdout for all of
 the retrieved matches.
 
 The <code>match_complex_converter.py</code> program converts a simple match ARFF file
