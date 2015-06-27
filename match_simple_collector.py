@@ -1,22 +1,31 @@
 #!/usr/bin/env python
 """Program that spiders the Riot API looking for matches by as many summoners
-as it can discover. Two ARFF data lines are written to stdout for each match:
-One for the victorious team and the other for the defeated.
+as it can discover. One ARFF data line is written to stdout for each match.
 
 Each ARFF data line has the following columns:
 
-match_creation_timestamp (expressed in epoch seconds)
-top_summoner_id
-top_champion_id
-jungle_summoner_id
-jungle_champion_id
-mid_summoner_id
-mid_champion_id
-adc_summoner_id
-adc_champion_id
-support_summoner_id
-support_champion_id
-victory (either "WIN" or LOSS")
+match_id
+match_timestamp (expressed in epoch seconds)
+winner_top_summoner_id
+winner_top_champion_id
+winner_jungle_summoner_id
+winner_jungle_champion_id
+winner_mid_summoner_id
+winner_mid_champion_id
+winner_adc_summoner_id
+winner_adc_champion_id
+winner_support_summoner_id
+winner_support_champion_id
+loser_top_summoner_id
+loser_top_champion_id
+loser_jungle_summoner_id
+loser_jungle_champion_id
+loser_mid_summoner_id
+loser_mid_champion_id
+loser_adc_summoner_id
+loser_adc_champion_id
+loser_support_summoner_id
+loser_support_champion_id
 """
 
 import riot
@@ -27,20 +36,30 @@ def main():
 
     print '''@RELATION lol_match_simple
 
-@ATTRIBUTE match_creation NUMERIC
-@ATTRIBUTE top_summoner_id NUMERIC
-@ATTRIBUTE top_summoner_champion {62,24,35,19,76,143,63,33,42,201,34,23,21,53,83,101,15,92,61,41,54,78,30,126,20,48,113,104,25,150,99,102,58,114,222,429,105,38,37,39,112,69,57,412,10,120,121,2,115,134,36,43,1,84,89,157,85,107,13,98,154,80,50,432,14,67,75,4,31,77,236,106,51,122,56,26,268,68,72,17,6,32,3,74,22,161,27,110,29,86,131,11,60,12,55,245,82,96,266,119,9,91,5,64,44,90,127,18,421,8,59,267,16,45,40,111,28,79,238,254,117,103,133,7,81}
-@ATTRIBUTE jungle_summoner_id NUMERIC
-@ATTRIBUTE jungle_summoner_champion {62,24,35,19,76,143,63,33,42,201,34,23,21,53,83,101,15,92,61,41,54,78,30,126,20,48,113,104,25,150,99,102,58,114,222,429,105,38,37,39,112,69,57,412,10,120,121,2,115,134,36,43,1,84,89,157,85,107,13,98,154,80,50,432,14,67,75,4,31,77,236,106,51,122,56,26,268,68,72,17,6,32,3,74,22,161,27,110,29,86,131,11,60,12,55,245,82,96,266,119,9,91,5,64,44,90,127,18,421,8,59,267,16,45,40,111,28,79,238,254,117,103,133,7,81}
-@ATTRIBUTE mid_summoner_id NUMERIC
-@ATTRIBUTE mid_summoner_champion {62,24,35,19,76,143,63,33,42,201,34,23,21,53,83,101,15,92,61,41,54,78,30,126,20,48,113,104,25,150,99,102,58,114,222,429,105,38,37,39,112,69,57,412,10,120,121,2,115,134,36,43,1,84,89,157,85,107,13,98,154,80,50,432,14,67,75,4,31,77,236,106,51,122,56,26,268,68,72,17,6,32,3,74,22,161,27,110,29,86,131,11,60,12,55,245,82,96,266,119,9,91,5,64,44,90,127,18,421,8,59,267,16,45,40,111,28,79,238,254,117,103,133,7,81}
-@ATTRIBUTE adc_summoner_id NUMERIC
-@ATTRIBUTE adc_summoner_champion {62,24,35,19,76,143,63,33,42,201,34,23,21,53,83,101,15,92,61,41,54,78,30,126,20,48,113,104,25,150,99,102,58,114,222,429,105,38,37,39,112,69,57,412,10,120,121,2,115,134,36,43,1,84,89,157,85,107,13,98,154,80,50,432,14,67,75,4,31,77,236,106,51,122,56,26,268,68,72,17,6,32,3,74,22,161,27,110,29,86,131,11,60,12,55,245,82,96,266,119,9,91,5,64,44,90,127,18,421,8,59,267,16,45,40,111,28,79,238,254,117,103,133,7,81}
-@ATTRIBUTE support_summoner_id NUMERIC
-@ATTRIBUTE support_summoner_champion {62,24,35,19,76,143,63,33,42,201,34,23,21,53,83,101,15,92,61,41,54,78,30,126,20,48,113,104,25,150,99,102,58,114,222,429,105,38,37,39,112,69,57,412,10,120,121,2,115,134,36,43,1,84,89,157,85,107,13,98,154,80,50,432,14,67,75,4,31,77,236,106,51,122,56,26,268,68,72,17,6,32,3,74,22,161,27,110,29,86,131,11,60,12,55,245,82,96,266,119,9,91,5,64,44,90,127,18,421,8,59,267,16,45,40,111,28,79,238,254,117,103,133,7,81}
-@ATTRIBUTE victory {WIN,LOSS}
+@ATTRIBUTE match_id NUMERIC
+@ATTRIBUTE match_timestamp NUMERIC
+@ATTRIBUTE winner_top_summoner_id NUMERIC
+@ATTRIBUTE winner_top_summoner_champion_id %s
+@ATTRIBUTE winner_jungle_summoner_id NUMERIC
+@ATTRIBUTE winner_jungle_summoner_champion_id %s
+@ATTRIBUTE winner_mid_summoner_id NUMERIC
+@ATTRIBUTE winner_mid_summoner_champion_id %s
+@ATTRIBUTE winner_adc_summoner_id NUMERIC
+@ATTRIBUTE winner_adc_summoner_champion_id %s
+@ATTRIBUTE winner_support_summoner_id NUMERIC
+@ATTRIBUTE winner_support_summoner_champion_id %s
+@ATTRIBUTE loser_top_summoner_id NUMERIC
+@ATTRIBUTE loser_top_summoner_champion_id %s
+@ATTRIBUTE loser_jungle_summoner_id NUMERIC
+@ATTRIBUTE loser_jungle_summoner_champion_id %s
+@ATTRIBUTE loser_mid_summoner_id NUMERIC
+@ATTRIBUTE loser_mid_summoner_champion_id %s
+@ATTRIBUTE loser_adc_summoner_id NUMERIC
+@ATTRIBUTE loser_adc_summoner_champion_id %s
+@ATTRIBUTE loser_support_summoner_id NUMERIC
+@ATTRIBUTE loser_support_summoner_champion_id %s
 
-@DATA'''
+@DATA''' % tuple([riot.RIOT_CHAMPION_IDS]*10)
 
     known_summoner_ids = api.bootstrap_summoner_ids.copy()
     remaining_summoner_ids = known_summoner_ids.copy()
@@ -79,8 +98,8 @@ def main():
                     summoner_ids[participant_id] = summoner_id
 
                 # collect data for each participant
-                victors = []
-                defeated = []
+                winners = []
+                losers = []
                 for participant in match['participants']:
                     summoner_id = summoner_ids[participant['participantId']]
                     champion_id = participant['championId']
@@ -91,9 +110,9 @@ def main():
                     position = riot.position(lane, role)
                     victory = stats['winner']
                     if victory:
-                        victors.append((summoner_id, champion_id, position))
+                        winners.append((summoner_id, champion_id, position))
                     else:
-                        defeated.append((summoner_id, champion_id, position))
+                        losers.append((summoner_id, champion_id, position))
 
                     # remember any newly discovered summoners in this match
                     if summoner_id not in known_summoner_ids:
@@ -101,14 +120,13 @@ def main():
                         remaining_summoner_ids.add(summoner_id)
 
                 # cheesy CSV formatting
-                for participants, victory in ((victors, 'WIN'), (defeated, 'LOSS')):
+                output = [match_id, match['matchCreation']]
+                for participants in (winners, losers):
                     # align participants ordering with position ordering
-                    output = [match['matchCreation']]
                     for participant in sorted(participants, key=lambda i: riot.POSITIONS.index(i[2])):
                         output.append(participant[0])
                         output.append(participant[1])
-                    output.append(victory)
-                    print ','.join([str(i) for i in output])
+                print ','.join([str(i) for i in output])
 
 if __name__ == '__main__':
     main()
