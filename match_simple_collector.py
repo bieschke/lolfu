@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 """Program that spiders the Riot API looking for matches by as many summoners
-as it can discover. Two CSV lines are written to stdout for each match: One
-for the victorious team and the other for the defeated.
+as it can discover. Two ARFF data lines are written to stdout for each match:
+One for the victorious team and the other for the defeated.
 
-Each CSV line has the following columns:
+Each ARFF data line has the following columns:
 
 match_creation_timestamp (expressed in epoch seconds)
 top_summoner_id
