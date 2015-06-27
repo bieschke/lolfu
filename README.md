@@ -13,6 +13,10 @@ retrieves complete match history for each of those summoners, and then continues
 the observed summoners from those matches, outputting CSV data to stdout for all of
 the retrieved matches.
 
+The <code>match_complex_converter.py</code> program converts a simple match ARFF file
+into a complex match ARFF file by layering in summoner and summoner-champion statistics
+in addition to the bare bones statistics provided in a simple match.
+
 The <code>match_predictor.py</code> utility is a simple command line program that
 predicts the likelihood of winning the described match.
 
