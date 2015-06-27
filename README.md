@@ -11,8 +11,8 @@ advise a player (a) whether or not they should dodge their current game based up
 data available in champion select, and (b) which champion, lane, and role is optimal
 for them to choose based on their match history and compositional aspects.
 
-The <code>get_matches.py</code> program walks a starting set of summoners, retrieves
-complete match history for each of those summoners, and then continues to spider
+The <code>match_simple_collector.py</code> program walks a starting set of summoners,
+retrieves complete match history for each of those summoners, and then continues to spider
 the observed summoners from those matches, outputting CSV data to stdout for all of
 the retrieved matches.
 
