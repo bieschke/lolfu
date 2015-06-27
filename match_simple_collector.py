@@ -84,6 +84,7 @@ def main():
                 if match_id in known_match_ids:
                     continue
                 known_match_ids.add(match_id)
+                meta_match = True
 
                 # the matchhistory endpoint does not include information in all
                 # participants within the match, to receive those we issue a second
@@ -107,7 +108,11 @@ def main():
                     timeline = participant['timeline']
                     lane = timeline['lane']
                     role = timeline['role']
-                    position = riot.position(lane, role)
+                    try:
+                        position = riot.position(lane, role, champion_id)
+                    except ValueError as e:
+                        meta_match = False
+                        break
                     victory = stats['winner']
                     if victory:
                         winners.append((summoner_id, champion_id, position))
@@ -119,14 +124,17 @@ def main():
                         known_summoner_ids.add(summoner_id)
                         remaining_summoner_ids.add(summoner_id)
 
-                # cheesy CSV formatting
-                output = [match_id, match['matchCreation']]
-                for participants in (winners, losers):
-                    # align participants ordering with position ordering
-                    for participant in sorted(participants, key=lambda i: riot.POSITIONS.index(i[2])):
-                        output.append(participant[0])
-                        output.append(participant[1])
-                print ','.join([str(i) for i in output])
+                # skip matches where the players aren't following the standard one top,
+                # one jungler, one mid, one bot adc, one bot support
+                if meta_match:
+                    # cheesy CSV formatting
+                    output = [match_id, match['matchCreation']]
+                    for participants in (winners, losers):
+                        # align participants ordering with position ordering
+                        for participant in sorted(participants, key=lambda i: riot.POSITIONS.index(i[2])):
+                            output.append(participant[0])
+                            output.append(participant[1])
+                    print ','.join([str(i) for i in output])
 
 if __name__ == '__main__':
     main()
