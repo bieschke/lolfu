@@ -16,7 +16,6 @@ def summoner_champion_winrate(api, summoner_id, champion_id):
             won = stats['totalSessionsWon']
             played = stats['totalSessionsPlayed']
             winrate_cache[summoner_id][champion['id']] = float(won) / played
-            #print winrate_cache[summoner_id][champion['id']]
     return winrate_cache[summoner_id].get(champion_id, 0.0)
 
 def main():
