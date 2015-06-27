@@ -77,15 +77,27 @@ class RiotAPI(object):
             time.sleep(delta)
         kw['api_key'] = self.dev_key
         url = self.base_url + path + '?' + urllib.urlencode(kw)
-        #print 'Calling Riot @ %s' % url
-        request = urllib2.urlopen(url)
+        while True:
+            retry_seconds = 60
+            try:
+                #print 'Calling Riot @ %s' % url
+                request = urllib2.urlopen(url)
+            except urllib2.HTTPError as e:
+                if e.code in (500, 503):
+                    # retry when the Riot API is having (hopefully temporary) difficulties
+                    time.sleep(retry_seconds)
+                    retry_seconds *= 2
+                    continue
+                else:
+                    raise
+            break
         data = json.load(request)
         RiotAPI.last_call = time.time()
         return data
 
     def champion_name(self, champion_id):
         """Return the name of the champion associated with the given champion ID."""
-        return self.call('/api/lol/static-data/na/v1.2/champion/%d' % champion_id)['name']
+        return self.call('/api/lol/static-data/na/v1.2/champion/%d' % int(champion_id))['name']
 
     def champions(self):
         """Return all champions."""
@@ -93,7 +105,7 @@ class RiotAPI(object):
 
     def match(self, match_id):
         """Return the requested match."""
-        return self.call('/api/lol/na/v2.2/match/%d' % match_id)
+        return self.call('/api/lol/na/v2.2/match/%d' % int(match_id))
 
     def matchhistory(self, summoner_id, begin_index=0, end_index=15):
         """Return the summoner's ranked 5s match history."""
@@ -117,7 +129,7 @@ class RiotAPI(object):
 
     def summoner_stats(self, summoner_id):
         """Return statistics for the given summoner."""
-        return self.call('/api/lol/na/v1.3/stats/by-summoner/%d/ranked' % summoner_id)
+        return self.call('/api/lol/na/v1.3/stats/by-summoner/%d/ranked' % int(summoner_id))
 
     def summoner_champion_winrate(self, summoner_id, champion_id):
         """Return the win rate [0,1] of the given summoner on the given champion."""
