@@ -13,9 +13,7 @@ retrieves complete match history for each of those summoners, and then continues
 the observed summoners from those matches, outputting CSV data to stdout for all of
 the retrieved matches.
 
-The <code>dodge.py</code> utility is a simple command line program that someday will
-advise a player (a) whether or not they should dodge their current game based upon
-data available in champion select, and (b) which champion, lane, and role is optimal
-for them to choose based on their match history and compositional aspects.
+The <code>match_predictor.py</code> utility is a simple command line program that
+predicts the likelihood of winning the described match.
 
 <i>lolfu isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing League of Legends. League of Legends and Riot Games are trademarks or registered trademarks of Riot Games, Inc. League of Legends © Riot Games, Inc.</i>
