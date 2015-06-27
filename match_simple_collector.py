@@ -73,8 +73,6 @@ def main():
                     role = timeline['role']
                     position = riot.position(lane, role)
                     victory = stats['winner']
-                    # TODO add more than just position & champ
-                    # use all general summoner and champ stats
                     if victory:
                         victors.append((summoner_id, champion_id, position))
                     else:
@@ -88,15 +86,12 @@ def main():
                 # cheesy CSV formatting
                 for participants, victory in ((victors, 'WIN'), (defeated, 'LOSS')):
                     # align participants ordering with position ordering
-                    participants.sort(key=lambda i: riot.POSITIONS.index(i[2]))
-                    p = ''
-                    for participant in participants:
-                        position_format = (
-                            ('summoner_id', participant[0]),
-                            ('champion_id', participant[1]),
-                            )
-                        p += ',' + ','.join([str(i[1]) for i in position_format])
-                    print '%s%s,%s' % (match['matchCreation'], p, victory)
+                    output = [match['matchCreation']]
+                    for participant in sorted(participants, key=lambda i: riot.POSITIONS.index(i[2])):
+                        output.append(participant[0])
+                        output.append(participant[1])
+                    output.append(victory)
+                    print ','.join([str(i) for i in output])
 
 if __name__ == '__main__':
     main()
