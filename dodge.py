@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Utility to lookup all of the summoner-champion pairs in your current
-lobby. This program will respond with a textual recommendation for you
-to either play or dodge this game.
+lobby. This program will respond with a textual predictions about their
+chances of winning the match.
 
 Example usage:
 
@@ -11,7 +11,7 @@ TheNakedBacon on Azir winrate 0%
 Zac Efrons Colon on Irelia winrate 0%
 matasar on Thresh winrate 51%
 Bunglers Bane on Kalista winrate 0%
-AVERAGE WINRATE 21% => DODGE!
+AVERAGE WINRATE 21%
 """
 
 import riot
@@ -69,10 +69,9 @@ def main():
     print '%s on %s winrate %.0f%%' % (summoner4_name, champion4_name, winrate4)
     print '%s on %s winrate %.0f%%' % (summoner5_name, champion5_name, winrate5)
 
-    # lastly inform the player whether or not they should dodge this match
+    # lastly inform the player about their odds in this match
     avg = (winrate1 + winrate2 + winrate3 + winrate4 + winrate5) / 5.0
-    dodge = avg < 50.0 and 'DODGE' or 'PLAY'
-    print 'AVERAGE WINRATE %.0f%% => %s!' % (avg, dodge)
+    print 'AVERAGE WINRATE %.0f%%' % avg
 
 if __name__ == '__main__':
     main()
