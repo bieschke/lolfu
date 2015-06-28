@@ -23,7 +23,7 @@ addition to the bare bones statistics provided in a simple match.
 likelihood of winning the described match.
 
 <code>arff_reader.py</code> is a command line utility that reads in ARFF via stdin and
-writes JSON-ified dictionaries to stdout. Keys in the JSON output are the ARFF attribute
-names and values are the ARFF data. Useful for piping ARFF files.
+writes either CSV or JSON-ified dictionaries to stdout. Keys in the JSON output are 
+the ARFF attribute names and values are the ARFF data. Useful for piping ARFF files.
 
 <i>lolfu isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing League of Legends. League of Legends and Riot Games are trademarks or registered trademarks of Riot Games, Inc. League of Legends © Riot Games, Inc.</i>
