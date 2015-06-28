@@ -18,9 +18,9 @@ each argument is a previously collected ARFF file. Supplying the previously crea
 data files allows this program to skip existing matches and only output data for
 previously unobserved matches.
 
-<code>match_complex_converter.py</code> converts a simple match ARFF file into a 
-complex match ARFF file by layering in summoner and summoner-champion statistics in 
-addition to the bare bones statistics provided in a simple match.
+<code>collector_match_complex.py</code> converts simple match idata into a complex 
+match ARFF layering in summoner and summoner-champion statistics in addition to the 
+bare bones statistics provided in a simple match.
 
 <code>collector_matchup.py</code> reads a complex match and outputs a matchup ARFF
 derived from that data. Matchup data captures all champion combinations between
