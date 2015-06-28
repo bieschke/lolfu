@@ -3,10 +3,11 @@
 in the following format: champion1,champion2,winrate
 """
 
+import argparse
 import csv
 import sys
 
-def main():
+def main(minsample=0):
 
     # accumulate win and session counts
     wins = {}
@@ -21,9 +22,14 @@ def main():
     for key in sessions.keys():
         win_count = wins.get(key, 0)
         session_count = sessions[key]
-        winrate = float(win_count) / session_count
-        print ','.join([key[0], key[1], str(winrate)])
+        if minsample <= session_count:
+            winrate = float(win_count) / session_count
+            print ','.join([key[0], key[1], str(winrate)])
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--minsample', metavar='N', type=int, default=0,
+        help='require at least N samples in order to include winrate')
+    args = parser.parse_args()
+    main(args.minsample)
