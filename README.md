@@ -26,6 +26,10 @@ addition to the bare bones statistics provided in a simple match.
 derived from that data. Matchup data captures all champion combinations between
 competing teams. This is the core dataset for counterpicking statistics.
 
+<code>synergy_collector.py</code> reads a complex match and outputs a synergy ARFF
+derived from that data. Synergy data captures all champion combinations possible
+within one team. This is the core dataset for team composition statistics.
+
 <code>match_predictor.py</code> is a simple command line program that predicts the
 likelihood of winning the described match.
 
