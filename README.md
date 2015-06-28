@@ -33,8 +33,12 @@ within one team. This is the core dataset for team composition statistics.
 <code>match_predictor.py</code> is a simple command line program that predicts the
 likelihood of winning the described match.
 
-<code>arff_reader.py</code> is a command line utility that reads in ARFF via stdin and
-writes either CSV or JSON-ified dictionaries to stdout. Keys in the JSON output are 
+<code>util_arff_reader.py</code> is a command line utility that reads in ARFF via stdin
+and writes either CSV or JSON-ified dictionaries to stdout. Keys in the JSON output are 
 the ARFF attribute names and values are the ARFF data. Useful for piping ARFF files.
+
+<code>util_winrate.py</code> is a command line utility that reads in CSV files on
+stdin having the format champion1,champion2,{WIN,LOSS} and output a CSV file
+aggregating by that champion combination in the format champion1,champion2,winrate.
 
 <i>lolfu isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing League of Legends. League of Legends and Riot Games are trademarks or registered trademarks of Riot Games, Inc. League of Legends © Riot Games, Inc.</i>
