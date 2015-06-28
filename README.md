@@ -10,7 +10,7 @@ server failures. When surpassing Riot API rate limits, the wrapper will automati
 respect the Retry-After header and resume querying after the rate limit threshold has 
 passed.
 
-<code>match_simple_collector.py</code> walks a starting set of summoners, retrieves
+<code>collector_match_simple.py</code> walks a starting set of summoners, retrieves
 complete match history for each of those summoners, and then continues to spider the 
 observed summoners from those matches, outputting ARFF data to stdout for all of the
 retrieved matches. This program also accepts optional command line arguments, where
@@ -22,11 +22,11 @@ previously unobserved matches.
 complex match ARFF file by layering in summoner and summoner-champion statistics in 
 addition to the bare bones statistics provided in a simple match.
 
-<code>matchup_collector.py</code> reads a complex match and outputs a matchup ARFF
+<code>collector_matchup.py</code> reads a complex match and outputs a matchup ARFF
 derived from that data. Matchup data captures all champion combinations between
 competing teams. This is the core dataset for counterpicking statistics.
 
-<code>synergy_collector.py</code> reads a complex match and outputs a synergy ARFF
+<code>collector_synergy.py</code> reads a complex match and outputs a synergy ARFF
 derived from that data. Synergy data captures all champion combinations possible
 within one team. This is the core dataset for team composition statistics.
 
