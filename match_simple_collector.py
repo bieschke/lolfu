@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 """Program that spiders the Riot API looking for matches by as many summoners
 as it can discover. One ARFF data line is written to stdout for each match.
+This program also accepts optional command line arguments, where each argument
+is a previously collected ARFF file. Supplying the previously created data
+files allows this program to skip existing matches and only output data for
+previously unobserved matches.
 
 Each ARFF data line has the following columns:
 
@@ -28,7 +32,10 @@ loser_support_summoner_id
 loser_support_champion_id
 """
 
+import fileinput
 import riot
+import sys
+import urllib2
 
 def main():
 
@@ -61,18 +68,30 @@ def main():
 
 @DATA''' % tuple([riot.RIOT_CHAMPION_IDS]*10)
 
+    # start by bootstrapping summoner ids
     known_summoner_ids = api.bootstrap_summoner_ids.copy()
     remaining_summoner_ids = known_summoner_ids.copy()
     known_match_ids = set()
+
+    # Optional command line arguments for this program are the names of all previously
+    # collected data files. Accumulate all of the match ids for which we have already
+    # collected data.
+    if sys.argv[1:]:
+        for line in fileinput.input():
+            try:
+                # rely on the first column being the match id
+                known_match_ids.add(int(line.split(',')[0]))
+            except ValueError:
+                pass # ignore any lines that don't start with a number
+        print >>sys.stderr, '%d preexisting matches found' % len(known_match_ids)
 
     while remaining_summoner_ids:
         summoner_id = remaining_summoner_ids.pop()
 
         begin_index = 0
+        step = 15 # maximum allowable through Riot API
         while True:
-            # walk through summoner's match history 15 matches at a time
-            # 15 is the most number of matches the Riot API allows you to retrieve at one time
-            step = 15
+            # walk through summoner's match history STEP matches at a time
             end_index = begin_index + step
             matches = api.matchhistory(summoner_id, begin_index, end_index).get('matches', [])
             if not matches:
@@ -89,7 +108,13 @@ def main():
                 # the matchhistory endpoint does not include information in all
                 # participants within the match, to receive those we issue a second
                 # call to the match endpoint.
-                match = api.match(match_id)
+                try:
+                    match = api.match(match_id)
+                except urllib2.HTTPError as e:
+                    if e.code == 404:
+                        continue # skip matches that no longer exist
+                    else:
+                        raise
 
                 # create a mapping of participant ids to summoner ids
                 summoner_ids = {}

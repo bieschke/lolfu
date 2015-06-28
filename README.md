@@ -13,7 +13,10 @@ passed.
 <code>match_simple_collector.py</code> walks a starting set of summoners, retrieves
 complete match history for each of those summoners, and then continues to spider the 
 observed summoners from those matches, outputting ARFF data to stdout for all of the
-retrieved matches.
+retrieved matches. This program also accepts optional command line arguments, where
+each argument is a previously collected ARFF file. Supplying the previously created 
+data files allows this program to skip existing matches and only output data for
+previously unobserved matches.
 
 <code>match_complex_converter.py</code> converts a simple match ARFF file into a 
 complex match ARFF file by layering in summoner and summoner-champion statistics in 
