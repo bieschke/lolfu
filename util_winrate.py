@@ -7,7 +7,7 @@ import argparse
 import csv
 import sys
 
-def main(minsample=0):
+def main(minsample):
 
     # accumulate win and session counts
     wins = {}
