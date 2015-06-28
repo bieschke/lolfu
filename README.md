@@ -22,6 +22,10 @@ previously unobserved matches.
 complex match ARFF file by layering in summoner and summoner-champion statistics in 
 addition to the bare bones statistics provided in a simple match.
 
+<code>matchup_collector.py</code> reads a complex match and outputs a matchup ARFF
+derived from that data. Matchup data captures all champion combinations between
+competing teams. This is the core dataset for counterpicking statistics.
+
 <code>match_predictor.py</code> is a simple command line program that predicts the
 likelihood of winning the described match.
 
