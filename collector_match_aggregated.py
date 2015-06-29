@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+"""Read a complex match JSON and write an aggregated match ARFF to stdout.
+"""
 
 import argparse
 import json

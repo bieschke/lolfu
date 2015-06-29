@@ -18,9 +18,17 @@ each argument is a previously collected ARFF file. Supplying the previously crea
 data files allows this program to skip existing matches and only output data for
 previously unobserved matches.
 
-<code>collector_match_complex.py</code> converts simple match idata into a complex 
+<code>collector_match_complex.py</code> converts simple match data into a complex
 match ARFF layering in summoner and summoner-champion statistics in addition to the 
 bare bones statistics provided in a simple match.
+
+<code>collector_match_aggregated.py</code> converts complex match datta into an
+aggregated match ARFF. Whereas a simple match ARFF has only the bare bones of data
+for a given match, and a complex match ARFF has a large number of depthful features,
+an aggregated match ARFF contains only a select number of relevant features that are
+in fact themselves aggregations of multiple other data. For example the KDA feature
+is an aggregate of kills, deaths, and assists data and is included with the aggregated
+match ARFF.
 
 <code>collector_matchup.py</code> reads a complex match and outputs a matchup ARFF
 derived from that data. Matchup data captures all champion combinations between
