@@ -27,6 +27,16 @@ def main(matchup_csv, synergy_csv):
 
     print '@RELATION lol_match_aggregated'
     print
+    print '@ATTRIBUTE top_with_jungle NUMERIC'
+    print '@ATTRIBUTE top_with_mid NUMERIC'
+    print '@ATTRIBUTE top_with_adc NUMERIC'
+    print '@ATTRIBUTE top_with_support NUMERIC'
+    print '@ATTRIBUTE jungle_with_mid NUMERIC'
+    print '@ATTRIBUTE jungle_with_adc NUMERIC'
+    print '@ATTRIBUTE jungle_with_support NUMERIC'
+    print '@ATTRIBUTE mid_with_adc NUMERIC'
+    print '@ATTRIBUTE mid_with_support NUMERIC'
+    print '@ATTRIBUTE adc_with_support NUMERIC'
     for position in positions:
         print '@ATTRIBUTE %s_champion %s' % (position, riot.RIOT_CHAMPION_KEYS)
         print '@ATTRIBUTE %s_enemy %s' % (position, riot.RIOT_CHAMPION_KEYS)
@@ -34,27 +44,56 @@ def main(matchup_csv, synergy_csv):
         print '@ATTRIBUTE %s_winrate NUMERIC' % position
         print '@ATTRIBUTE %s_kda NUMERIC' % position
         print '@ATTRIBUTE %s_df NUMERIC' % position
+        for position2 in positions:
+            print '@ATTRIBUTE %s_vs_%s NUMERIC' % (position, position2)
     print '@ATTRIBUTE victory {WIN,LOSS}'
     print
+
     print '@DATA'
     for line in sys.stdin:
         row = json.loads(line)
         output = []
+
+        top_champion = row['top_champion']
+        jungle_champion = row['jungle_champion']
+        mid_champion = row['mid_champion']
+        adc_champion = row['adc_champion']
+        support_champion = row['support_champion']
+        output.append(synergies.get((top_champion, jungle_champion), '?'))
+        output.append(synergies.get((top_champion, mid_champion), '?'))
+        output.append(synergies.get((top_champion, adc_champion), '?'))
+        output.append(synergies.get((top_champion, support_champion), '?'))
+        output.append(synergies.get((jungle_champion, mid_champion), '?'))
+        output.append(synergies.get((jungle_champion, adc_champion), '?'))
+        output.append(synergies.get((jungle_champion, support_champion), '?'))
+        output.append(synergies.get((mid_champion, adc_champion), '?'))
+        output.append(synergies.get((mid_champion, support_champion), '?'))
+        output.append(synergies.get((adc_champion, support_champion), '?'))
+
         for position in positions:
             champion = row['%s_champion' % position]
             enemy = row['%s_enemy' % position]
+            output.extend([champion, enemy])
+
             wins = int(row['%s_champion_totalSessionsWon' % position])
             sessions = int(row['%s_champion_totalSessionsPlayed' % position])
             winrate = 0.0
             if sessions > 0:
                 winrate = float(wins) / sessions
+            output.extend([sessions, winrate])
+
             kills = int(row['%s_champion_totalChampionKills' % position])
             deaths = int(row['%s_champion_totalDeathsPerSession' % position])
             assists = int(row['%s_champion_totalAssists' % position])
             kda = float(kills + assists) / max(deaths, 1) # avoid divide by zero
             df = (kills * 2) + (deaths * -3) + (assists * 1)
-            victory = row['victory']
-            output.extend([champion, enemy, sessions, winrate, kda, df])
+            output.extend([kda, df])
+
+            for position2 in positions:
+                matchup_champion = row['%s_enemy' % position2]
+                matchup_winrate = matchups.get((champion, matchup_champion), '?')
+                output.append(matchup_winrate)
+
         output.append(row['victory'])
         print ','.join(map(str, output))
 
