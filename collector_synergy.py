@@ -32,7 +32,7 @@ def main():
             for position2 in positions:
                 if position1 == position2:
                     continue # skip our own position
-                champion2 = row['%s_enemy' % position2]
+                champion2 = row['%s_champion' % position2]
                 print ','.join([champion1, champion2, victory])
 
 if __name__ == '__main__':
