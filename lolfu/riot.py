@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.4
 """Riot LOL API module.
 
 This module is a lightweight Python wrapper around Riot's League of Legends
@@ -10,6 +10,7 @@ https://developer.riotgames.com/api/methods
 
 import ConfigParser
 import json
+import os.path
 import time
 import urllib
 import urllib2
@@ -73,7 +74,7 @@ class RiotAPI(object):
         explicitly as a keyword argument in this constructor.
         """
         cfg = ConfigParser.SafeConfigParser()
-        cfg.read('riot.cfg')
+        cfg.read([os.path.abspath('riot.cfg'), 'riot.cfg', os.path.expanduser('~/riot.cfg')])
         self.dev_key = cfg.get('riot', 'dev_key', vars=kw)
         self.bootstrap_summoner_ids = set(cfg.get('riot', 'bootstrap_summoner_ids', vars=kw).split(','))
 
@@ -88,7 +89,7 @@ class RiotAPI(object):
         while True:
             retry_seconds = 60
             try:
-                #print 'Calling Riot @ %s' % url
+                #print('Calling Riot @ %s' % url)
                 request = urllib2.urlopen(url)
             except urllib2.HTTPError as e:
                 # https://developer.riotgames.com/docs/response-codes
