@@ -1,10 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.4
 """Read a complex match JSON and write an aggregated match ARFF to stdout.
 """
 
 import argparse
 import json
-import riot
+from . import riot
 import sys
 
 positions = ('top', 'jungle', 'mid', 'adc', 'support')
@@ -17,7 +17,7 @@ def main(matchup_csv, synergy_csv):
         for line in matchup_csv:
             champion1, champion2, winrate = line.split(',')
             matchups[champion1, champion2] = float(winrate)
-        print >>sys.stderr, '%d matchups' % len(matchups)
+        print('%d matchups' % len(matchups), file=sys.stderr)
 
     # accept an optional champion synergy winrate CSV
     synergies = {}
@@ -25,33 +25,33 @@ def main(matchup_csv, synergy_csv):
         for line in synergy_csv:
             champion1, champion2, winrate = line.split(',')
             synergies[champion1, champion2] = float(winrate)
-        print >>sys.stderr, '%d synergies' % len(synergies)
+        print('%d synergies' % len(synergies), file=sys.stderr)
 
-    print '@RELATION lol_match_aggregated'
-    print
-    print '@ATTRIBUTE top_with_jungle NUMERIC'
-    print '@ATTRIBUTE top_with_mid NUMERIC'
-    print '@ATTRIBUTE top_with_adc NUMERIC'
-    print '@ATTRIBUTE top_with_support NUMERIC'
-    print '@ATTRIBUTE jungle_with_mid NUMERIC'
-    print '@ATTRIBUTE jungle_with_adc NUMERIC'
-    print '@ATTRIBUTE jungle_with_support NUMERIC'
-    print '@ATTRIBUTE mid_with_adc NUMERIC'
-    print '@ATTRIBUTE mid_with_support NUMERIC'
-    print '@ATTRIBUTE adc_with_support NUMERIC'
+    print('@RELATION lol_match_aggregated')
+    print()
+    print('@ATTRIBUTE top_with_jungle NUMERIC')
+    print('@ATTRIBUTE top_with_mid NUMERIC')
+    print('@ATTRIBUTE top_with_adc NUMERIC')
+    print('@ATTRIBUTE top_with_support NUMERIC')
+    print('@ATTRIBUTE jungle_with_mid NUMERIC')
+    print('@ATTRIBUTE jungle_with_adc NUMERIC')
+    print('@ATTRIBUTE jungle_with_support NUMERIC')
+    print('@ATTRIBUTE mid_with_adc NUMERIC')
+    print('@ATTRIBUTE mid_with_support NUMERIC')
+    print('@ATTRIBUTE adc_with_support NUMERIC')
     for position in positions:
-        print '@ATTRIBUTE %s_champion %s' % (position, riot.RIOT_CHAMPION_KEYS)
-        print '@ATTRIBUTE %s_enemy %s' % (position, riot.RIOT_CHAMPION_KEYS)
-        print '@ATTRIBUTE %s_sessions NUMERIC' % position
-        print '@ATTRIBUTE %s_winrate NUMERIC' % position
-        print '@ATTRIBUTE %s_kda NUMERIC' % position
-        print '@ATTRIBUTE %s_df NUMERIC' % position
+        print('@ATTRIBUTE %s_champion %s' % (position, riot.RIOT_CHAMPION_KEYS))
+        print('@ATTRIBUTE %s_enemy %s' % (position, riot.RIOT_CHAMPION_KEYS))
+        print('@ATTRIBUTE %s_sessions NUMERIC' % position)
+        print('@ATTRIBUTE %s_winrate NUMERIC' % position)
+        print('@ATTRIBUTE %s_kda NUMERIC' % position)
+        print('@ATTRIBUTE %s_df NUMERIC' % position)
         for position2 in positions:
-            print '@ATTRIBUTE %s_vs_%s NUMERIC' % (position, position2)
-    print '@ATTRIBUTE victory {WIN,LOSS}'
-    print
+            print('@ATTRIBUTE %s_vs_%s NUMERIC' % (position, position2))
+    print('@ATTRIBUTE victory {WIN,LOSS}')
+    print()
 
-    print '@DATA'
+    print('@DATA')
     for line in sys.stdin:
         row = json.loads(line)
         output = []
@@ -97,7 +97,7 @@ def main(matchup_csv, synergy_csv):
                 output.append(matchup_winrate)
 
         output.append(row['victory'])
-        print ','.join(map(str, output))
+        print(','.join(map(str, output)))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

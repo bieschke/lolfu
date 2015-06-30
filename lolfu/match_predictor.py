@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.4
 """Utility to lookup all of the summoner-champion pairs in your current
 lobby. This program will respond with a textual predictions about their
 chances of winning the match.
@@ -14,7 +14,7 @@ Bunglers Bane on Kalista winrate 0%
 AVERAGE WINRATE 21%
 """
 
-import riot
+from . import riot
 import sys
 
 def main():
@@ -28,7 +28,7 @@ def main():
     # key, title, or name
     champion_map = {}
     champions = api.champions()
-    for champion in champions['data'].values():
+    for champion in list(champions['data'].values()):
         champion_id = champion['id']
         champion_name = champion['name']
         champion_map[str(champion_id)] = (champion_id, champion_name)
@@ -63,15 +63,15 @@ def main():
     winrate4 = 100 * api.summoner_champion_winrate(summoner4_id, champion4_id)
     winrate5 = 100 * api.summoner_champion_winrate(summoner5_id, champion5_id)
 
-    print '%s on %s winrate %.0f%%' % (summoner1_name, champion1_name, winrate1)
-    print '%s on %s winrate %.0f%%' % (summoner2_name, champion2_name, winrate2)
-    print '%s on %s winrate %.0f%%' % (summoner3_name, champion3_name, winrate3)
-    print '%s on %s winrate %.0f%%' % (summoner4_name, champion4_name, winrate4)
-    print '%s on %s winrate %.0f%%' % (summoner5_name, champion5_name, winrate5)
+    print('%s on %s winrate %.0f%%' % (summoner1_name, champion1_name, winrate1))
+    print('%s on %s winrate %.0f%%' % (summoner2_name, champion2_name, winrate2))
+    print('%s on %s winrate %.0f%%' % (summoner3_name, champion3_name, winrate3))
+    print('%s on %s winrate %.0f%%' % (summoner4_name, champion4_name, winrate4))
+    print('%s on %s winrate %.0f%%' % (summoner5_name, champion5_name, winrate5))
 
     # lastly inform the player about their odds in this match
     avg = (winrate1 + winrate2 + winrate3 + winrate4 + winrate5) / 5.0
-    print 'AVERAGE WINRATE %.0f%%' % avg
+    print('AVERAGE WINRATE %.0f%%' % avg)
 
 if __name__ == '__main__':
     main()

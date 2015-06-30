@@ -1,18 +1,20 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.4
 """Read a simple match CSV on stdin and write a complex match ARFF file to stdout.
 """
 
 import csv
-import riot
+from . import riot
 import sys
-import urllib2
+import urllib.error
+import urllib.parse
+import urllib.request
 
 
 champion_cache = {}
 def champion_key(api, champion_id):
     """Return the text key for the given champion. Results are memoized."""
     if not champion_cache:
-        for champion in api.champions()['data'].values():
+        for champion in list(api.champions()['data'].values()):
             champion_cache[champion['id']] = champion['key']
     return champion_cache[champion_id]
 
@@ -40,29 +42,29 @@ def main():
     some_summoner_id = list(api.bootstrap_summoner_ids)[0]
     some_summoner_stats = summoner_stats(api, some_summoner_id)
     overall_stats_keys = sorted(some_summoner_stats[0].keys())
-    some_champion_ids = some_summoner_stats.keys()
+    some_champion_ids = list(some_summoner_stats.keys())
     some_champion_ids.remove(0)
     champion_stats_keys = sorted(some_summoner_stats[some_champion_ids[0]].keys())
 
     # ARFF metadata
-    print '@RELATION lol_match_complex'
-    print
-    print '@ATTRIBUTE match_timestamp NUMERIC'
+    print('@RELATION lol_match_complex')
+    print()
+    print('@ATTRIBUTE match_timestamp NUMERIC')
     for position in ('top', 'jungle', 'mid', 'adc', 'support'):
-        print '@ATTRIBUTE %s_champion %s' % (position, riot.RIOT_CHAMPION_KEYS)
-        print '@ATTRIBUTE %s_enemy %s' % (position, riot.RIOT_CHAMPION_KEYS)
+        print('@ATTRIBUTE %s_champion %s' % (position, riot.RIOT_CHAMPION_KEYS))
+        print('@ATTRIBUTE %s_enemy %s' % (position, riot.RIOT_CHAMPION_KEYS))
         for key in overall_stats_keys:
-            print '@ATTRIBUTE %s_overall_%s NUMERIC' % (position, key)
+            print('@ATTRIBUTE %s_overall_%s NUMERIC' % (position, key))
         for key in champion_stats_keys:
-            print '@ATTRIBUTE %s_champion_%s NUMERIC' % (position, key)
-    print '@ATTRIBUTE victory {WIN,LOSS}'
-    print
-    print '@DATA'
+            print('@ATTRIBUTE %s_champion_%s NUMERIC' % (position, key))
+    print('@ATTRIBUTE victory {WIN,LOSS}')
+    print()
+    print('@DATA')
 
     # walk simple matches from stdin
     matches = {}
     for row in csv.reader(sys.stdin):
-        row = map(int, row)
+        row = list(map(int, row))
         match_timestamp = row[1]
 
         for victory, team, enemy in (
@@ -100,9 +102,9 @@ def main():
 
                 output.append(victory)
 
-                print ','.join([str(i) for i in output])
+                print(','.join([str(i) for i in output]))
 
-            except urllib2.HTTPError as e:
+            except urllib.error.HTTPError as e:
                 if e.code == 404:
                     continue # skip records that contain missing data
                 else:

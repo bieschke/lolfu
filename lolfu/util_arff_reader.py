@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.4
 """Read an ARFF file from stdin and output this data into different
 formats on stdout.
 
@@ -27,7 +27,7 @@ def main(output):
             if not line.strip() or line.startswith('@'):
                 pass
             else:
-                print line, # remember to omit trailing return
+                print(line, end='') # remember to omit trailing return
 
     # JSON output
     elif output == JSON:
@@ -41,11 +41,11 @@ def main(output):
                 attributes.append(attribute_name)
             else:
                 # data becomes values in our JSON output
-                print json.dumps(dict(zip(attributes, row)))
+                print(json.dumps(dict(list(zip(attributes, row)))))
 
     # Unknown output
     else:
-        raise ValueError, 'Unknown output format: %r' % output
+        raise ValueError('Unknown output format: %r' % output)
 
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.4
 """Program that spiders the Riot API looking for matches by as many summoners
 as it can discover. One ARFF data line is written to stdout for each match.
 This program also accepts optional command line arguments, where each argument
@@ -33,15 +33,17 @@ loser_support_champion_id
 """
 
 import fileinput
-import riot
+from . import riot
 import sys
-import urllib2
+import urllib.error
+import urllib.request
+import urllib.parse
 
 def main():
 
     api = riot.RiotAPI()
 
-    print '''@RELATION lol_match_simple
+    print('''@RELATION lol_match_simple
 
 @ATTRIBUTE match_id NUMERIC
 @ATTRIBUTE match_timestamp NUMERIC
@@ -66,7 +68,7 @@ def main():
 @ATTRIBUTE loser_support_summoner_id NUMERIC
 @ATTRIBUTE loser_support_summoner_champion_id %s
 
-@DATA''' % tuple([riot.RIOT_CHAMPION_IDS]*10)
+@DATA''' % tuple([riot.RIOT_CHAMPION_IDS]*10))
 
     # start by bootstrapping summoner ids
     known_summoner_ids = api.bootstrap_summoner_ids.copy()
@@ -83,7 +85,7 @@ def main():
                 known_match_ids.add(int(line.split(',')[0]))
             except ValueError:
                 pass # ignore any lines that don't start with a number
-        print >>sys.stderr, '%d preexisting matches found' % len(known_match_ids)
+        print('%d preexisting matches found' % len(known_match_ids), file=sys.stderr)
 
     while remaining_summoner_ids:
         summoner_id = remaining_summoner_ids.pop()
@@ -110,7 +112,7 @@ def main():
                 # call to the match endpoint.
                 try:
                     match = api.match(match_id)
-                except urllib2.HTTPError as e:
+                except urllib.error.HTTPError as e:
                     if e.code == 404:
                         continue # skip matches that no longer exist
                     else:
@@ -159,7 +161,7 @@ def main():
                         for participant in sorted(participants, key=lambda i: riot.POSITIONS.index(i[2])):
                             output.append(participant[0])
                             output.append(participant[1])
-                    print ','.join([str(i) for i in output])
+                    print(','.join([str(i) for i in output]))
 
 if __name__ == '__main__':
     main()

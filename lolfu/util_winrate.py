@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.4
 """Read matchup or synergy data as CSV on stdin and output data
 in the following format: champion1,champion2,winrate
 """
@@ -19,12 +19,12 @@ def main(minsample):
             wins[key] = wins.get(key, 0) + 1
 
     # output CSV line for every champion-champion combination
-    for key in sessions.keys():
+    for key in list(sessions.keys()):
         win_count = wins.get(key, 0)
         session_count = sessions[key]
         if minsample <= session_count:
             winrate = float(win_count) / session_count
-            print ','.join([key[0], key[1], str(winrate)])
+            print(','.join([key[0], key[1], str(winrate)]))
 
 
 if __name__ == '__main__':

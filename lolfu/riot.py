@@ -8,12 +8,13 @@ Developer API documentation can be found here:
 https://developer.riotgames.com/api/methods
 """
 
-import ConfigParser
+import configparser
 import json
 import os.path
 import time
-import urllib
-import urllib2
+import urllib.error
+import urllib.request
+import urllib.parse
 
 # Riot's lanes
 RIOT_TOP = 'TOP'
@@ -73,7 +74,7 @@ class RiotAPI(object):
         """Read configuration options from riot.cfg if they are not specified
         explicitly as a keyword argument in this constructor.
         """
-        cfg = ConfigParser.SafeConfigParser()
+        cfg = configparser.SafeConfigParser()
         cfg.read([os.path.abspath('riot.cfg'), 'riot.cfg', os.path.expanduser('~/riot.cfg')])
         self.dev_key = cfg.get('riot', 'dev_key', vars=kw)
         self.bootstrap_summoner_ids = set(cfg.get('riot', 'bootstrap_summoner_ids', vars=kw).split(','))
@@ -85,13 +86,13 @@ class RiotAPI(object):
         if delta > 0:
             time.sleep(delta)
         kw['api_key'] = self.dev_key
-        url = self.base_url + path + '?' + urllib.urlencode(kw)
+        url = self.base_url + path + '?' + urllib.parse.urlencode(kw)
         while True:
             retry_seconds = 60
             try:
                 #print('Calling Riot @ %s' % url)
-                request = urllib2.urlopen(url)
-            except urllib2.HTTPError as e:
+                request = urllib.request.urlopen(url)
+            except urllib.error.HTTPError as e:
                 # https://developer.riotgames.com/docs/response-codes
                 # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
                 if e.code == 429:

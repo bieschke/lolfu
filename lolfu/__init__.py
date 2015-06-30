@@ -1,1 +1,1 @@
-import riot
+from . import riot
