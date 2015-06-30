@@ -3,8 +3,8 @@ lolfu
 Smattering of Python programs and utilities written around Riot's League of Legends API.
 
 Dependencies:
-Python 3.4.3 - https://www.python.org
-Requests 2.7.0 - http://requests.readthedocs.org
+<li>Python 3.4.3 - https://www.python.org</li>
+<li>Requests 2.7.0 - http://requests.readthedocs.org</li>
 
 <code>riot.py</code> is a simple wrapper around Riot's LOL API. You can either pass your 
 api key directly to it's constructor, or create a <code>riot.cfg</code> file that it'll 
