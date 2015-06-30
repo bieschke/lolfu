@@ -4,7 +4,7 @@
 
 import argparse
 import json
-from . import riot
+import riot
 import sys
 
 positions = ('top', 'jungle', 'mid', 'adc', 'support')

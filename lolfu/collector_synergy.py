@@ -11,7 +11,7 @@ victory = Was this match a "WIN" or "LOSS"?
 """
 
 import json
-from . import riot
+import riot
 import sys
 
 positions = ('top', 'jungle', 'mid', 'adc', 'support')

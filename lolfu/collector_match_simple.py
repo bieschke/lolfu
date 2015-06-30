@@ -33,7 +33,7 @@ loser_support_champion_id
 """
 
 import fileinput
-from . import riot
+import riot
 import sys
 import urllib.error
 import urllib.request

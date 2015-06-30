@@ -14,7 +14,7 @@ Bunglers Bane on Kalista winrate 0%
 AVERAGE WINRATE 21%
 """
 
-from . import riot
+import riot
 import sys
 
 def main():

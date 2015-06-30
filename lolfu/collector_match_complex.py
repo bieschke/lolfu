@@ -3,7 +3,7 @@
 """
 
 import csv
-from . import riot
+import riot
 import sys
 import urllib.error
 import urllib.parse
