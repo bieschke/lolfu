@@ -6,8 +6,6 @@ import csv
 import riot
 import sys
 import urllib.error
-import urllib.parse
-import urllib.request
 
 
 champion_cache = {}

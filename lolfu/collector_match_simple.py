@@ -36,8 +36,6 @@ import fileinput
 import riot
 import sys
 import urllib.error
-import urllib.request
-import urllib.parse
 
 def main():
 

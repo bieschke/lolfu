@@ -9,12 +9,9 @@ https://developer.riotgames.com/api/methods
 """
 
 import configparser
-import json
 import os.path
+import requests
 import time
-import urllib.error
-import urllib.request
-import urllib.parse
 
 # Riot's lanes
 RIOT_TOP = 'TOP'
@@ -79,37 +76,34 @@ class RiotAPI(object):
         self.dev_key = cfg.get('riot', 'dev_key', vars=kw)
         self.bootstrap_summoner_ids = set(cfg.get('riot', 'bootstrap_summoner_ids', vars=kw).split(','))
 
-    def call(self, path, **kw):
+    def call(self, path, **params):
         """Execute a remote API call and return the JSON results."""
-        next_call = RiotAPI.last_call + (1 / self.requests_per_second)
+        params['api_key'] = self.dev_key
+
+        next_call = self.last_call + (1 / self.requests_per_second)
         delta = next_call - time.time()
         if delta > 0:
             time.sleep(delta)
-        kw['api_key'] = self.dev_key
-        url = self.base_url + path + '?' + urllib.parse.urlencode(kw)
+
+        retry_seconds = 60
         while True:
-            retry_seconds = 60
-            try:
-                #print('Calling Riot @ %s' % url)
-                request = urllib.request.urlopen(url)
-            except urllib.error.HTTPError as e:
-                # https://developer.riotgames.com/docs/response-codes
-                # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
-                if e.code == 429:
-                    # retry after we're within our rate limit
-                    time.sleep(float(e.headers['Retry-After']) + 1)
-                    continue
-                elif e.code in (500, 502, 503, 504):
-                    # retry when the Riot API is having (hopefully temporary) difficulties
-                    time.sleep(retry_seconds)
-                    retry_seconds *= 2
-                    continue
-                else:
-                    raise
+            response = requests.get(self.base_url + path, params=params)
+            # https://developer.riotgames.com/docs/response-codes
+            # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
+            if response.status_code == 429:
+                # retry after we're within our rate limit
+                time.sleep(float(e.headers['Retry-After']) + 1)
+                continue
+            elif response.status_code in (500, 502, 503, 504):
+                # retry when the Riot API is having (hopefully temporary) difficulties
+                time.sleep(retry_seconds)
+                retry_seconds *= 2
+                continue
+            response.raise_for_status()
+            self.last_call = time.time()
             break
-        data = json.load(request)
-        RiotAPI.last_call = time.time()
-        return data
+
+        return response.json()
 
     def champion_name(self, champion_id):
         """Return the name of the champion associated with the given champion ID."""
