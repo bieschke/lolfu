@@ -20,7 +20,7 @@ what is the winrate optimal champion they should be playing in each role. The im
 here is a simple greedy solution to the multi-armed bandit problem where each champion is
 modeled as an arm.
 
-<code>scripts/collector_match_simple.py</code> walks a starting set of summoners, retrieves
+<code>scripts/collector/match_simple.py</code> walks a starting set of summoners, retrieves
 complete match history for each of those summoners, and then continues to spider the 
 observed summoners from those matches, outputting ARFF data to stdout for all of the
 retrieved matches. This program also accepts optional command line arguments, where
@@ -28,11 +28,11 @@ each argument is a previously collected ARFF file. Supplying the previously crea
 data files allows this program to skip existing matches and only output data for
 previously unobserved matches.
 
-<code>scripts/collector_match_complex.py</code> converts simple match data into a complex
+<code>scripts/collector/match_complex.py</code> converts simple match data into a complex
 match ARFF layering in summoner and summoner-champion statistics in addition to the 
 bare bones statistics provided in a simple match.
 
-<code>scripts/collector_match_aggregated.py</code> converts complex match datta into an
+<code>scripts/collector/match_aggregated.py</code> converts complex match datta into an
 aggregated match ARFF. Whereas a simple match ARFF has only the bare bones of data
 for a given match, and a complex match ARFF has a large number of depthful features,
 an aggregated match ARFF contains only a select number of relevant features that are
@@ -40,23 +40,23 @@ in fact themselves aggregations of multiple other data. For example the KDA feat
 is an aggregate of kills, deaths, and assists data and is included with the aggregated
 match ARFF.
 
-<code>scripts/collector_matchup.py</code> reads a complex match and outputs a matchup ARFF
+<code>scripts/collector/matchup.py</code> reads a complex match and outputs a matchup ARFF
 derived from that data. Matchup data captures all champion combinations between
 competing teams. This is the core dataset for counterpicking statistics.
 
-<code>scripts/collector_synergy.py</code> reads a complex match and outputs a synergy ARFF
+<code>scripts/collector/synergy.py</code> reads a complex match and outputs a synergy ARFF
 derived from that data. Synergy data captures all champion combinations possible
 within one team. This is the core dataset for team composition statistics.
 
-<code>scripts/match_predictor.py</code> is a simple command line program that predicts the
-likelihood of winning the described match.
-
-<code>scripts/util_arff_reader.py</code> is a command line utility that reads in ARFF via stdin
+<code>scripts/util_arff/reader.py</code> is a command line utility that reads in ARFF via stdin
 and writes either CSV or JSON-ified dictionaries to stdout. Keys in the JSON output are 
 the ARFF attribute names and values are the ARFF data. Useful for piping ARFF files.
 
-<code>scripts/util_winrate.py</code> is a command line utility that reads in CSV files on
+<code>scripts/util/winrate.py</code> is a command line utility that reads in CSV files on
 stdin having the format champion1,champion2,{WIN,LOSS} and output a CSV file
 aggregating by that champion combination in the format champion1,champion2,winrate.
+
+<code>scripts/match_predictor.py</code> is a simple command line program that predicts the
+likelihood of winning the described match.
 
 <i>lolfu isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing League of Legends. League of Legends and Riot Games are trademarks or registered trademarks of Riot Games, Inc. League of Legends © Riot Games, Inc.</i>
