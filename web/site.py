@@ -9,7 +9,7 @@ https://en.wikipedia.org/wiki/Multi-armed_bandit
 """
 
 import cherrypy
-import os
+import lolfu
 import os.path
 
 
@@ -18,6 +18,9 @@ class LOLBandit(object):
     summoner by name and receive a webpage in return that advises them what are the
     winrate optimal champions to play in each position.
     """
+
+    def __init__(self):
+        self.api = lolfu.riot.RiotAPI()
 
     def html(self, title, body):
         """Return html for the given parameters."""
@@ -78,7 +81,7 @@ if __name__ == '__main__':
     cfg = {
         '/static': {
             'tools.staticdir.on': True,
-            'tools.staticdir.dir': os.path.abspath(os.getcwd()) + '/static'
+            'tools.staticdir.dir': os.path.dirname(os.path.abspath(__file__)) + '/static'
         }
     }
     cherrypy.quickstart(LOLBandit(), '/', cfg)

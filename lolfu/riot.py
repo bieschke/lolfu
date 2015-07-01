@@ -72,7 +72,7 @@ class RiotAPI(object):
         explicitly as a keyword argument in this constructor.
         """
         cfg = configparser.SafeConfigParser()
-        cfg.read([os.path.abspath('riot.cfg'), 'riot.cfg', os.path.expanduser('~/riot.cfg')])
+        cfg.read(os.path.dirname(os.path.abspath(__file__)) + '/riot.cfg')
         self.dev_key = cfg.get('riot', 'dev_key', vars=kw)
         self.bootstrap_summoner_ids = set(cfg.get('riot', 'bootstrap_summoner_ids', vars=kw).split(','))
 
