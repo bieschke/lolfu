@@ -9,7 +9,7 @@ https://en.wikipedia.org/wiki/Multi-armed_bandit
 """
 
 import cherrypy
-import lolfu
+import riot
 import os.path
 
 
@@ -20,7 +20,7 @@ class LOLBandit(object):
     """
 
     def __init__(self):
-        self.api = lolfu.riot.RiotAPI()
+        self.api = riot.RiotAPI()
 
     def html(self, title, body):
         """Return html for the given parameters."""
