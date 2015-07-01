@@ -33,46 +33,52 @@ class LOLBandit(object):
                 <meta name="viewport" content="width=device-width, initial-scale=1">
                 <!--TODO: add favicon-->
                 <title>%s</title>
-                <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+                <link rel="stylesheet" href="static/bootstrap.min.css">
                 <link rel="stylesheet" href="static/style.css">
             </head>
             <body>
                 <div class="container">
-
-                    <form class="form-inline" method="get" action="who">
-                        <div class="form-group">
-                            <label class="sr-only" for="summoner_input">Summoner</label>
-                            <input type="text" class="form-control input-lg" id="summoner_input" placeholder="Summoner Name" name="summoner">
-                        </div>
-                        <button type="submit" class="btn btn-default btn-lg">Go</button>
-                    </form>
-
-                    <h1>%s</h1>
-                    <dl class="dl-horizontal">
-                    <dt>Top</dt>
-                    <dd>baz:</dd>
-                    <dt>Jungle</dt>
-                    <dd>baz:</dd>
-                    <dt>Mid</dt>
-                    <dd>baz:</dd>
-                    <dt>ADC</dt>
-                    <dd>baz:</dd>
-                    <dt>Support</dt>
-                    <dd>baz:</dd>
-                    </dl>
-
+                    %s
                 </div>
             </body>
             </html>""" % (title, body)
 
     @cherrypy.expose
     def index(self):
-        return self.html('lolfu', '')
+        body = """
+            <div class="jumbotron">
+                <h1>Welcome to lolfu!</h1>
+                <p>Want to find out which champion you should play in each position? Enter your summoner name below and we'll tell you using an epsilon-greedy strategy to the multi-armed bandit problem. Long story short: lolfu uses science.</p>
+
+                <form class="form-inline" method="get" action="who">
+                    <div class="form-group">
+                        <input type="text" class="form-control input-lg" placeholder="Summoner Name" name="summoner">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg">Go</button>
+                </form>
+
+            </div>
+            """
+        return self.html('lolfu', body)
 
     @cherrypy.expose
     def who(self, summoner='Lyte'):
         """Return a webpage with details about the given summoner."""
-        body='???'
+        body="""
+            <h1>%s</h1>
+            <dl class="dl-horizontal">
+            <dt>Top</dt>
+            <dd>baz:</dd>
+            <dt>Jungle</dt>
+            <dd>baz:</dd>
+            <dt>Mid</dt>
+            <dd>baz:</dd>
+            <dt>ADC</dt>
+            <dd>baz:</dd>
+            <dt>Support</dt>
+            <dd>baz:</dd>
+            </dl>
+            """ % summoner
         return self.html(summoner, body)
 
 
