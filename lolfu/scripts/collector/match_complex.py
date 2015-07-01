@@ -8,41 +8,19 @@ import sys
 import urllib.error
 
 
-champion_cache = {}
-def champion_key(api, champion_id):
-    """Return the text key for the given champion. Results are memoized."""
-    if not champion_cache:
-        for champion in list(api.champions()['data'].values()):
-            champion_cache[champion['id']] = champion['key']
-    return champion_cache[champion_id]
-
-
-stats_cache = {}
-def summoner_stats(api, summoner_id):
-    """Return stats for the given summoner. Results are memoized."""
-    if summoner_id not in stats_cache:
-        my_stats = {}
-        for champion in api.summoner_stats(summoner_id).get('champions', []):
-            my_stats[champion['id']] = champion['stats']
-        stats_cache[summoner_id] = my_stats
-    return stats_cache[summoner_id]
-
-
-def summoner_champion_stats(api, summoner_id, champion_id):
-    """Return the summoner's champion specific stats."""
-    return summoner_stats(api, summoner_id).get(champion_id, {})
-
-
 def main():
     api = riot.RiotAPI()
 
-    # infer the keys for overall and champion-specific stats
+    # infer the keys for overall stats
     some_summoner_id = list(api.bootstrap_summoner_ids)[0]
-    some_summoner_stats = summoner_stats(api, some_summoner_id)
-    overall_stats_keys = sorted(some_summoner_stats[0].keys())
-    some_champion_ids = list(some_summoner_stats.keys())
-    some_champion_ids.remove(0)
-    champion_stats_keys = sorted(some_summoner_stats[some_champion_ids[0]].keys())
+    overall_stats = api.summoner_champion_stats(some_summoner_id, riot.CHAMPION_OVERALL)
+    overall_stats_keys = tuple(sorted(overall_stats.keys()))
+
+    # infer the keys for champion specific stats
+    for champion_stats in api.summoner_stats(some_summoner_id)['champions']:
+        if champion_stats['id'] != riot.CHAMPION_OVERALL:
+            champion_stats_keys = tuple(sorted(champion_stats['stats'].keys()))
+            break
 
     # ARFF metadata
     print('@RELATION lol_match_complex')
@@ -87,14 +65,14 @@ def main():
                         (support_summoner_id, support_champion_id, support_enemy_id),
                         ):
 
-                    output.append(champion_key(api, champion_id))
-                    output.append(champion_key(api, enemy_id))
+                    output.append(api.champion_key(champion_id))
+                    output.append(api.champion_key(enemy_id))
 
-                    overall_stats = summoner_champion_stats(api, summoner_id, 0)
+                    overall_stats = api.summoner_champion_stats(summoner_id, riot.CHAMPION_OVERALL)
                     for key in overall_stats_keys:
                         output.append(int(overall_stats.get(key, 0)))
 
-                    champion_stats = summoner_champion_stats(api, summoner_id, champion_id)
+                    champion_stats = api.summoner_champion_stats(summoner_id, champion_id)
                     for key in champion_stats_keys:
                         output.append(int(champion_stats.get(key, 0)))
 

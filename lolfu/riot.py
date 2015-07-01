@@ -9,6 +9,7 @@ https://developer.riotgames.com/api/methods
 """
 
 import configparser
+import functools
 import os.path
 import requests
 import time
@@ -35,6 +36,8 @@ MID = 'MID'
 ADC = 'ADC'
 SUPPORT = 'SUPPORT'
 POSITIONS = (TOP, JUNGLE, MID, ADC, SUPPORT)
+
+CHAMPION_OVERALL = 0 # magic id used to indicate all champions for a summoner
 
 RIOT_CHAMPION_IDS = '{62,24,35,19,76,143,63,33,42,201,34,23,21,53,83,101,15,92,61,41,54,78,30,126,20,48,113,104,25,150,99,102,58,114,222,429,105,38,37,39,112,69,57,412,10,120,121,2,115,134,36,43,1,84,89,157,85,107,13,98,154,80,50,432,14,67,75,4,31,77,236,106,51,122,56,26,268,68,72,17,6,32,3,74,22,161,27,110,29,86,131,11,60,12,55,245,82,96,266,119,9,91,5,64,44,90,127,18,421,8,59,267,16,45,40,111,28,79,238,254,117,103,133,7,81}'
 
@@ -80,14 +83,17 @@ class RiotAPI(object):
         """Execute a remote API call and return the JSON results."""
         params['api_key'] = self.dev_key
 
-        next_call = self.last_call + (1 / self.requests_per_second)
-        delta = next_call - time.time()
-        if delta > 0:
-            time.sleep(delta)
-
         retry_seconds = 60
         while True:
+
+            next_call = self.last_call + (1 / self.requests_per_second)
+            delta = next_call - time.time()
+            if delta > 0:
+                time.sleep(delta)
+
             response = requests.get(self.base_url + path, params=params)
+            self.last_call = time.time()
+
             # https://developer.riotgames.com/docs/response-codes
             # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
             if response.status_code == 429:
@@ -100,19 +106,29 @@ class RiotAPI(object):
                 retry_seconds *= 2
                 continue
             response.raise_for_status()
-            self.last_call = time.time()
             break
 
         return response.json()
 
+    @functools.lru_cache()
+    def champion_key(self, champion_id):
+        """Return the text key for the given champion."""
+        for champion in self.champions()['data'].values():
+            if champion_id == champion['id']:
+                return champion['key']
+        return None
+
+    @functools.lru_cache()
     def champion_name(self, champion_id):
         """Return the name of the champion associated with the given champion ID."""
         return self.call('/api/lol/static-data/na/v1.2/champion/%d' % int(champion_id))['name']
 
+    @functools.lru_cache()
     def champions(self):
         """Return all champions."""
         return self.call('/api/lol/static-data/na/v1.2/champion')
 
+    @functools.lru_cache()
     def match(self, match_id):
         """Return the requested match."""
         return self.call('/api/lol/na/v2.2/match/%d' % int(match_id))
@@ -122,12 +138,22 @@ class RiotAPI(object):
         return self.call('/api/lol/na/v2.2/matchhistory/%s' % summoner_id,
             rankedQueues='RANKED_SOLO_5x5', begindIndex=begin_index, endIndex=end_index)
 
+    @functools.lru_cache()
     def summoner_by_name(self, *names):
         """Return the summoner having the given name(s) as CSV."""
         stripped = [''.join(n.lower().split()) for n in names]
         joined = ','.join(stripped)
         return self.call('/api/lol/na/v1.4/summoner/by-name/%s' % joined)
 
+    @functools.lru_cache()
     def summoner_stats(self, summoner_id):
         """Return statistics for the given summoner."""
         return self.call('/api/lol/na/v1.3/stats/by-summoner/%d/ranked' % int(summoner_id))
+
+    @functools.lru_cache()
+    def summoner_champion_stats(self, summoner_id, champion_id):
+        """Return stats for the given summoner."""
+        for champion in self.summoner_stats(summoner_id).get('champions', []):
+            if champion_id == champion['id']:
+                return champion['stats']
+        return None
