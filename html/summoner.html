@@ -5,7 +5,7 @@
     <div class="col-md-3">
         <div class="media">
             <div class="media-left media-middle">
-                <a href="#"><img class="media-object" src="..." alt="..." style="width:64px;height:64px;"></a>
+                <a href="#"><img class="media-object img-circle" src="/static/img/champion/${champion}.png" alt="${champion}"></a>
             </div>
             <div class="media-body">
                 <h4 class="media-heading">${champion} <small>${position}</small></h4>
@@ -26,11 +26,11 @@
 
 % for position in ['Top', 'Jungle', 'Mid', 'ADC', 'Support']:
 
-<div class="row" style="margin-top:30px;">
+<div class="row" style="margin-top:50px;">
 
     <div class="col-md-2"><h3 class="text-right">${position}</h3></div>
     ${champion(summoner, tier, position, "Fiddlesticks")}
-    ${champion(summoner, tier, position, "Wukong")}
+    ${champion(summoner, tier, position, "RekSai")}
     ${champion(summoner, tier, position, "Blitzcrank")}
 
 </div>

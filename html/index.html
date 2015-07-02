@@ -5,8 +5,7 @@
 <div class="jumbotron">
 
     <h1>Welcome to lolfu!</h1>
-    <p>Want to find out which champion you should play in each position? Enter your summoner name below and we'll tell
-    you using an epsilon-greedy strategy to the multi-armed bandit problem. Long story short: lolfu uses science.</p>
+    <p>Want to find out which champion you should play in each position? Enter your summoner name and we'll make a recommendation that optimizes your solo queue climb.</p>
 
     <form class="form-inline" method="get" action="summoner">
         <div class="form-group">
@@ -16,3 +15,13 @@
     </form>
 
 </div>
+
+<h3>How does this work!?</h3>
+
+<p class="lead">Lolfu uses science. We model champion selection as a <a href="https://en.wikipedia.org/wiki/Multi-armed_bandit">multi-armed bandit</a> problem where each champion is an arm. We then recommend champions using an epsilon-greedy strategy setting epsilon equal to zero.</p>
+
+<p class="lead">Why epsilon zero? Because there are too many champions and not enough time within a single season to spend too much time exploring your champion pool. With 100+ champions playing 10 games on each champion would be &gt;1000 games!</p>
+
+<h3>Where can I get the code for lolfu?</h3>
+
+<p class="lead">Lolfu is hosted at github <a href="https://github.com/bieschke/lolfu">here</a>.</p>
