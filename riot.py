@@ -111,6 +111,14 @@ class RiotAPI(object):
         return response.json()
 
     @functools.lru_cache()
+    def champion_image(self, champion_id):
+        """Return the image filename for the given champion."""
+        for champion in self.champions()['data'].values():
+            if champion_id == champion['id']:
+                return champion['image']['full']
+        return None
+
+    @functools.lru_cache()
     def champion_key(self, champion_id):
         """Return the text key for the given champion."""
         for champion in self.champions()['data'].values():
@@ -126,7 +134,7 @@ class RiotAPI(object):
     @functools.lru_cache()
     def champions(self):
         """Return all champions."""
-        return self.call('/api/lol/static-data/na/v1.2/champion')
+        return self.call('/api/lol/static-data/na/v1.2/champion', champData='image')
 
     @functools.lru_cache()
     def tier_division(self, summoner_id):

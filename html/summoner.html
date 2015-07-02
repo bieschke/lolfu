@@ -1,17 +1,26 @@
 <%inherit file="base.html"/>
 
-<%def name="champion(summoner, tier, position, champion)">
+<%def name="winrate(val)">
+% if val is None:
+n/a
+% else:
+${round(100 * val)}% winrate
+% endif
+</%def>
+
+<%def name="champion(summoner, tier, position, rec)">
 
     <div class="col-md-3">
         <div class="media">
             <div class="media-left media-middle">
-                <a href="#"><img class="media-object img-circle" src="/static/img/champion/${champion}.png" alt="${champion}"></a>
+                <a href="#"><img class="media-object img-circle" src="/static/img/champion/${rec['champion_image']}" alt="${rec['champion_name']}"></a>
             </div>
             <div class="media-body">
-                <h4 class="media-heading">${champion} <small>${position}</small></h4>
-                <h6>Expected: 53% winrate</h6>
-                <h6>${summoner}: 54% winrate</h6>
-                <h6>${tier}: 51% winrate</h6>
+                <h4 class="media-heading">${rec['champion_name']} <small>${position}</small></h4>
+                <h6>Expected: ${winrate(rec['winrate_expected'])}</h6>
+                <h6>${summoner}: ${winrate(rec['winrate_summoner'])}</h6>
+                <h6>${tier}: ${winrate(rec['winrate_tier'])}</h6>
+                <h6>${rec['wins']}W ${rec['losses']}L</h6>
             </div>
         </div>
     </div>
@@ -24,14 +33,14 @@
     <h1 class="text-center">${summoner} <small>${tier} ${division}</small></h1>
 </div>
 
-% for position in ['Top', 'Jungle', 'Mid', 'ADC', 'Support']:
+% for position, precs in zip(['Top', 'Jungle', 'Mid', 'ADC', 'Support'], recs):
 
 <div class="row" style="margin-top:50px;">
 
     <div class="col-md-2"><h3 class="text-right">${position}</h3></div>
-    ${champion(summoner, tier, position, "Fiddlesticks")}
-    ${champion(summoner, tier, position, "RekSai")}
-    ${champion(summoner, tier, position, "Blitzcrank")}
+    ${champion(summoner, tier, position, precs[0])}
+    ${champion(summoner, tier, position, precs[1])}
+    ${champion(summoner, tier, position, precs[2])}
 
 </div>
 

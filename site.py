@@ -39,7 +39,19 @@ class LOLBandit(object):
         """Return a webpage with details about the given summoner."""
         summoner_id, summoner = self.api.summoner_by_name(who)
         tier, division = self.api.tier_division(summoner_id)
-        return self.html('summoner.html', summoner=summoner, tier=tier, division=division)
+        recs = []
+        for position in riot.POSITIONS:
+            # TODO make this real
+            rec0 = {}
+            rec0['champion_name'] = self.api.champion_name(9)
+            rec0['champion_image'] = self.api.champion_image(9)
+            rec0['winrate_expected'] = .5453515
+            rec0['winrate_summoner'] = None
+            rec0['winrate_tier'] = .5453515
+            rec0['wins'] = 110
+            rec0['losses'] = 94
+            recs.append((rec0, rec0, rec0))
+        return self.html('summoner.html', summoner=summoner, tier=tier, division=division, recs=recs)
 
 
 if __name__ == '__main__':
