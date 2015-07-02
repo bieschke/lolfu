@@ -32,12 +32,12 @@ class LOLBandit(object):
 
     @cherrypy.expose
     def index(self):
-        return self.html('index.html', title='lolfu')
+        return self.html('index.html')
 
     @cherrypy.expose
     def who(self, summoner='Lyte'):
         """Return a webpage with details about the given summoner."""
-        return self.html('who.html', title=summoner, summoner=summoner)
+        return self.html('who.html', summoner=summoner)
 
 
 if __name__ == '__main__':
