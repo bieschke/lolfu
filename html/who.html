@@ -1,17 +1,38 @@
 <%inherit file="base.html"/>
 
+<%def name="champion(position, summoner)">
+
+    <div class="col-md-3">
+        <div class="media">
+            <div class="media-left media-middle">
+                <a href="#"><img class="media-object" src="..." alt="..." style="width:64px;height:64px;"></a>
+            </div>
+            <div class="media-body">
+                <h4 class="media-heading">Fiddlesticks <small>${position}</small></h4>
+                <h6>Expected: 53% winrate</h6>
+                <h6>${summoner}: 54% winrate</h6>
+                <h6>Platinum: 51% winrate</h6>
+            </div>
+        </div>
+    </div>
+
+</%def>
+
 <%block name="title">${summoner}</%block>
 
-<h1>${summoner}</h1>
-<dl class="dl-horizontal">
-    <dt>Top</dt>
-    <dd>baz:</dd>
-    <dt>Jungle</dt>
-    <dd>baz:</dd>
-    <dt>Mid</dt>
-    <dd>baz:</dd>
-    <dt>ADC</dt>
-    <dd>baz:</dd>
-    <dt>Support</dt>
-    <dd>baz:</dd>
-</dl>
+<div class="page-header">
+    <h1 class="text-center">${summoner} <small>Platinum V</small></h1>
+</div>
+
+% for position in ['Top', 'Jungle', 'Mid', 'ADC', 'Support']:
+
+<div class="row" style="margin-top:30px;">
+
+    <div class="col-md-2"><h3 class="text-right">${position}</h3></div>
+    ${champion(position, summoner)}
+    ${champion(position, summoner)}
+    ${champion(position, summoner)}
+
+</div>
+
+% endfor
