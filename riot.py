@@ -129,6 +129,18 @@ class RiotAPI(object):
         return self.call('/api/lol/static-data/na/v1.2/champion')
 
     @functools.lru_cache()
+    def tier_division(self, summoner_id):
+        """Return the (tier, division) of the given summoner."""
+        summoner_id = str(summoner_id)
+        response = self.call('/api/lol/na/v2.5/league/by-summoner/%s/entry' % summoner_id)
+        for league in response[summoner_id]:
+            if league['queue'] == 'RANKED_SOLO_5x5':
+                for entry in league['entries']:
+                    if entry['playerOrTeamId'] == summoner_id:
+                        return league['tier'].capitalize(), entry['division']
+        return None, None
+
+    @functools.lru_cache()
     def match(self, match_id):
         """Return the requested match."""
         return self.call('/api/lol/na/v2.2/match/%d' % int(match_id))
@@ -139,11 +151,11 @@ class RiotAPI(object):
             rankedQueues='RANKED_SOLO_5x5', begindIndex=begin_index, endIndex=end_index)
 
     @functools.lru_cache()
-    def summoner_by_name(self, *names):
+    def summoner_by_name(self, name):
         """Return the summoner having the given name(s) as CSV."""
-        stripped = [''.join(n.lower().split()) for n in names]
-        joined = ','.join(stripped)
-        return self.call('/api/lol/na/v1.4/summoner/by-name/%s' % joined)
+        for summoner in self.call('/api/lol/na/v1.4/summoner/by-name/%s' % name).values():
+            return summoner['id'], summoner['name']
+        return None, None
 
     @functools.lru_cache()
     def summoner_stats(self, summoner_id):

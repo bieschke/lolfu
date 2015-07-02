@@ -37,7 +37,9 @@ class LOLBandit(object):
     @cherrypy.expose
     def who(self, summoner='Lyte'):
         """Return a webpage with details about the given summoner."""
-        return self.html('who.html', summoner=summoner)
+        summoner_id, summoner = self.api.summoner_by_name(summoner)
+        tier, division = self.api.tier_division(summoner_id)
+        return self.html('who.html', summoner=summoner, tier=tier, division=division)
 
 
 if __name__ == '__main__':

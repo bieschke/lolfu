@@ -1,6 +1,6 @@
 <%inherit file="base.html"/>
 
-<%def name="champion(position, summoner)">
+<%def name="champion(summoner, tier, position, champion)">
 
     <div class="col-md-3">
         <div class="media">
@@ -8,10 +8,10 @@
                 <a href="#"><img class="media-object" src="..." alt="..." style="width:64px;height:64px;"></a>
             </div>
             <div class="media-body">
-                <h4 class="media-heading">Fiddlesticks <small>${position}</small></h4>
+                <h4 class="media-heading">${champion} <small>${position}</small></h4>
                 <h6>Expected: 53% winrate</h6>
                 <h6>${summoner}: 54% winrate</h6>
-                <h6>Platinum: 51% winrate</h6>
+                <h6>${tier}: 51% winrate</h6>
             </div>
         </div>
     </div>
@@ -21,7 +21,7 @@
 <%block name="title">${summoner}</%block>
 
 <div class="page-header">
-    <h1 class="text-center">${summoner} <small>Platinum V</small></h1>
+    <h1 class="text-center">${summoner} <small>${tier} ${division}</small></h1>
 </div>
 
 % for position in ['Top', 'Jungle', 'Mid', 'ADC', 'Support']:
@@ -29,9 +29,9 @@
 <div class="row" style="margin-top:30px;">
 
     <div class="col-md-2"><h3 class="text-right">${position}</h3></div>
-    ${champion(position, summoner)}
-    ${champion(position, summoner)}
-    ${champion(position, summoner)}
+    ${champion(summoner, tier, position, "Fiddlesticks")}
+    ${champion(summoner, tier, position, "Wukong")}
+    ${champion(summoner, tier, position, "Blitzcrank")}
 
 </div>
 
