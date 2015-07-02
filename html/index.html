@@ -1,0 +1,16 @@
+<%inherit file="base.html"/>
+
+<div class="jumbotron">
+
+    <h1>Welcome to lolfu!</h1>
+    <p>Want to find out which champion you should play in each position? Enter your summoner name below and we'll tell
+    you using an epsilon-greedy strategy to the multi-armed bandit problem. Long story short: lolfu uses science.</p>
+
+    <form class="form-inline" method="get" action="who">
+        <div class="form-group">
+            <input type="text" class="form-control input-lg" placeholder="Summoner Name" name="summoner">
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg">Go</button>
+    </form>
+
+</div>

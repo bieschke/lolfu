@@ -6,6 +6,7 @@ Dependencies:
 <li>Python 3.4.3 - https://www.python.org</li>
 <li>Requests 2.7.0 - http://requests.readthedocs.org</li>
 <li>CherryPy 3.8.0 - http://www.cherrypy.org</li>
+<li>Mako 1.0.1 - http://www.makotemplates.org</li>
 
 <code>riot.py</code> is a simple wrapper around Riot's LOL API. You can either pass your 
 api key directly to it's constructor, or create a <code>riot.cfg</code> file that it'll 

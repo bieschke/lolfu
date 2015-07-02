@@ -11,6 +11,11 @@ https://en.wikipedia.org/wiki/Multi-armed_bandit
 import cherrypy
 import riot
 import os.path
+from mako.template import Template
+from mako.lookup import TemplateLookup
+
+
+lookup = TemplateLookup(directories='html', module_directory='tmp')
 
 
 class LOLBandit(object):
@@ -22,64 +27,17 @@ class LOLBandit(object):
     def __init__(self):
         self.api = riot.RiotAPI()
 
-    def html(self, title, body):
-        """Return html for the given parameters."""
-        return """
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="utf-8">
-                <meta http-equiv="X-UA-Compatible" content="IE=edge">
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <!--TODO: add favicon-->
-                <title>%s</title>
-                <link rel="stylesheet" href="static/bootstrap.min.css">
-                <link rel="stylesheet" href="static/style.css">
-            </head>
-            <body>
-                <div class="container">
-                    %s
-                </div>
-            </body>
-            </html>""" % (title, body)
+    def html(self, template, **kw):
+        return lookup.get_template(template).render_unicode(**kw).encode('utf-8', 'replace')
 
     @cherrypy.expose
     def index(self):
-        body = """
-            <div class="jumbotron">
-                <h1>Welcome to lolfu!</h1>
-                <p>Want to find out which champion you should play in each position? Enter your summoner name below and we'll tell you using an epsilon-greedy strategy to the multi-armed bandit problem. Long story short: lolfu uses science.</p>
-
-                <form class="form-inline" method="get" action="who">
-                    <div class="form-group">
-                        <input type="text" class="form-control input-lg" placeholder="Summoner Name" name="summoner">
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-lg">Go</button>
-                </form>
-
-            </div>
-            """
-        return self.html('lolfu', body)
+        return self.html('index.html', title='lolfu')
 
     @cherrypy.expose
     def who(self, summoner='Lyte'):
         """Return a webpage with details about the given summoner."""
-        body="""
-            <h1>%s</h1>
-            <dl class="dl-horizontal">
-            <dt>Top</dt>
-            <dd>baz:</dd>
-            <dt>Jungle</dt>
-            <dd>baz:</dd>
-            <dt>Mid</dt>
-            <dd>baz:</dd>
-            <dt>ADC</dt>
-            <dd>baz:</dd>
-            <dt>Support</dt>
-            <dd>baz:</dd>
-            </dl>
-            """ % summoner
-        return self.html(summoner, body)
+        return self.html('who.html', title=summoner, summoner=summoner)
 
 
 if __name__ == '__main__':
