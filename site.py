@@ -8,14 +8,18 @@ http://leagueoflegends.com
 https://en.wikipedia.org/wiki/Multi-armed_bandit
 """
 
+import argparse
 import cherrypy
 import riot
+import os
 import os.path
 from mako.template import Template
 from mako.lookup import TemplateLookup
 
 
-lookup = TemplateLookup(directories='html', module_directory='tmp')
+lookup = TemplateLookup(
+    directories=os.path.dirname(os.path.abspath(__file__)) + os.sep + 'html',
+    module_directory=os.path.dirname(os.path.abspath(__file__)) + os.sep + 'tmp')
 
 
 class LOLBandit(object):
@@ -55,11 +59,31 @@ class LOLBandit(object):
 
 
 if __name__ == '__main__':
-    """Launch the application on localhost:8080 for debugging."""
+    """Launch the application."""
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--production', dest='production', default=False, action='store_true',
+        help='Is this running in production?')
+    parser.add_argument('--host', metavar='HOST', default='127.0.0.1',
+        help='What hostname should we listen on?')
+    parser.add_argument('--port', metavar='PORT', type=int, default=8080,
+        help='What port should we listen on?')
+    args = parser.parse_args()
+
+    # global cherrypy configuration
+    global_cfg = {
+        'server.socket_host': args.host,
+        'server.socket_port': args.port,
+    }
+    if args.production:
+        global_cfg['environment'] = 'production'
+    cherrypy.config.update(global_cfg)
+
+    # application configuration and start
     cfg = {
         '/static': {
             'tools.staticdir.on': True,
-            'tools.staticdir.dir': os.path.dirname(os.path.abspath(__file__)) + '/static'
+            'tools.staticdir.dir': os.path.dirname(os.path.abspath(__file__)) + os.sep + 'static',
         }
     }
     cherrypy.quickstart(LOLBandit(), '/', cfg)
