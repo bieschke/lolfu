@@ -82,7 +82,7 @@ class RiotAPI(object):
         self.dev_key = cfg.get('riot', 'dev_key', vars=kw)
         self.bootstrap_summoner_ids = set(cfg.get('riot', 'bootstrap_summoner_ids', vars=kw).split(','))
 
-    def call(self, path, **params):
+    def call(self, path, throttle=True, **params):
         """Execute a remote API call and return the JSON results."""
         params['api_key'] = self.dev_key
 
@@ -91,11 +91,12 @@ class RiotAPI(object):
 
             next_call = self.last_call + (1 / self.requests_per_second)
             delta = next_call - time.time()
-            if delta > 0:
+            if delta > 0 and throttle:
                 time.sleep(delta)
 
             response = requests.get(self.base_url + path, params=params)
-            self.last_call = time.time()
+            if throttle:
+                self.last_call = time.time()
 
             # https://developer.riotgames.com/docs/response-codes
             # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
@@ -132,12 +133,12 @@ class RiotAPI(object):
     @functools.lru_cache()
     def champion_name(self, champion_id):
         """Return the name of the champion associated with the given champion ID."""
-        return self.call('/api/lol/static-data/na/v1.2/champion/%d' % int(champion_id))['name']
+        return self.call('/api/lol/static-data/na/v1.2/champion/%d' % int(champion_id), throttle=False)['name']
 
     @functools.lru_cache()
     def champions(self):
         """Return all champions."""
-        return self.call('/api/lol/static-data/na/v1.2/champion', champData='image')
+        return self.call('/api/lol/static-data/na/v1.2/champion', champData='image', throttle=False)
 
     @functools.lru_cache()
     def tier_division(self, summoner_id):
