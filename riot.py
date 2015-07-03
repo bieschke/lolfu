@@ -10,9 +10,12 @@ https://developer.riotgames.com/api/methods
 
 import configparser
 import functools
+import operator
 import os.path
 import requests
 import time
+
+CURRENT_SEASON = 'SEASON2015'
 
 # Riot's lanes
 RIOT_TOP = 'TOP'
@@ -98,7 +101,7 @@ class RiotAPI(object):
             # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
             if response.status_code == 429:
                 # retry after we're within our rate limit
-                time.sleep(float(e.headers['Retry-After']) + 1)
+                time.sleep(float(response.headers['Retry-After']) + 1)
                 continue
             elif response.status_code in (500, 502, 503, 504):
                 # retry when the Riot API is having (hopefully temporary) difficulties
@@ -177,3 +180,67 @@ class RiotAPI(object):
             if champion_id == champion['id']:
                 return champion['stats']
         return None
+
+    def summoner_champion_summary(self, summoner_id):
+        """Return a summary of how a summoner performs on all champions."""
+        wins = {}
+        losses = {}
+
+        abort = False
+        begin_index = 0
+        step = 15 # maximum allowable through Riot API
+        while not abort:
+
+            # walk through summoner's match history STEP matches at a time
+            end_index = begin_index + step
+            matches = self.matchhistory(summoner_id, begin_index, end_index).get('matches', [])
+            if not matches:
+                break
+            begin_index += step
+
+            # process each match
+            for match in matches:
+                match_id = match['matchId']
+                if match['season'] != CURRENT_SEASON:
+                    abort = True
+                    break
+
+                if len(match['participants']) != 1:
+                    raise ValueError('Expected exactly one participant')
+                participant = match['participants'][0]
+
+                champion_id = participant['championId']
+                timeline = participant['timeline']
+                lane = timeline['lane']
+                role = timeline['role']
+                victory = participant['stats']['winner']
+
+                try:
+                    p = position(lane, role, champion_id)
+                except ValueError as e:
+                    continue # skip matches where we can't determine position
+
+                if victory:
+                    wins.setdefault(p, {}).setdefault(champion_id, 0)
+                    wins[p][champion_id] += 1
+                else:
+                    losses.setdefault(p, {}).setdefault(champion_id, 0)
+                    losses[p][champion_id] += 1
+
+        # assemble results grouped by position and sorted by strength
+        results = {}
+        for p in POSITIONS:
+            result = []
+            cw = wins.get(p, {})
+            cl = losses.get(p, {})
+            champions = set(cw.keys()).union(cl.keys())
+            for champion_id in champions:
+                w = cw.get(champion_id, 0)
+                l = cl.get(champion_id, 0)
+                r = w / float(w + l)
+                t = 0.5 # FIXME: winrate for this summoner's tier in this position on this champion
+                k = 10.0 # smoothing factor, how quickly or slowly can expected winrate move
+                e = ((k * t) + w) / (k + w + l)
+                result.append((champion_id, w, l, r, t, e))
+            results[p] = sorted(result, key=operator.itemgetter(5), reverse=True)
+        return results

@@ -11,6 +11,7 @@ ${round(100 * val)}% winrate
 <%def name="champion(summoner, tier, position, rec)">
 
     <div class="col-md-3">
+% if rec is not None:
         <div class="media">
             <div class="media-left media-middle">
                 <a href="#"><img class="media-object img-circle" src="/static/img/champion/${rec['champion_image']}" alt="${rec['champion_name']}"></a>
@@ -23,6 +24,7 @@ ${round(100 * val)}% winrate
                 <h6>${rec['wins']}W ${rec['losses']}L</h6>
             </div>
         </div>
+% endif
     </div>
 
 </%def>

@@ -13,7 +13,6 @@ import cherrypy
 import riot
 import os
 import os.path
-from mako.template import Template
 from mako.lookup import TemplateLookup
 
 
@@ -41,20 +40,32 @@ class LOLBandit(object):
     @cherrypy.expose
     def summoner(self, who='Lyte'):
         """Return a webpage with details about the given summoner."""
+
         summoner_id, summoner = self.api.summoner_by_name(who)
         tier, division = self.api.tier_division(summoner_id)
+        scs = self.api.summoner_champion_summary(summoner_id)
+
         recs = []
         for position in riot.POSITIONS:
-            # TODO make this real
-            rec0 = {}
-            rec0['champion_name'] = self.api.champion_name(9)
-            rec0['champion_image'] = self.api.champion_image(9)
-            rec0['winrate_expected'] = .5453515
-            rec0['winrate_summoner'] = None
-            rec0['winrate_tier'] = .5453515
-            rec0['wins'] = 110
-            rec0['losses'] = 94
-            recs.append((rec0, rec0, rec0))
+            position_recs = []
+            for champion_id, wins, losses, wrs, wrt, wre in scs.get(position, [])[:3]:
+                if position_recs and wre < 0.5:
+                    # don't recommend anything with less than 50% winrate
+                    # but always recommend at least one
+                    break
+                rec = {}
+                rec['champion_name'] = self.api.champion_name(champion_id)
+                rec['champion_image'] = self.api.champion_image(champion_id)
+                rec['winrate_summoner'] = wrs
+                rec['winrate_tier'] = wrt
+                rec['winrate_expected'] = wre
+                rec['wins'] = wins
+                rec['losses'] = losses
+                position_recs.append(rec)
+            while len(position_recs) < 3:
+                position_recs.append(None)
+            recs.append(tuple(position_recs))
+
         return self.html('summoner.html', summoner=summoner, tier=tier, division=division, recs=recs)
 
 
