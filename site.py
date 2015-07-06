@@ -43,7 +43,7 @@ class LOLBandit(object):
 
         summoner_id, summoner = self.api.summoner_by_name(who)
         tier, division = self.api.tier_division(summoner_id)
-        scs = self.api.summoner_champion_summary(summoner_id)
+        scs = self.api.summoner_champion_summary(summoner_id, tier)
 
         recs = []
         for position in riot.POSITIONS:

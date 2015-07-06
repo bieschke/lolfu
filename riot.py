@@ -9,10 +9,12 @@ https://developer.riotgames.com/api/methods
 """
 
 import configparser
+import csv
 import functools
 import operator
 import os.path
 import requests
+import sys
 import time
 
 CURRENT_SEASON = 'SEASON2015'
@@ -59,12 +61,7 @@ def position(lane, role, champion_id):
         return ADC
     elif lane == RIOT_BOT and role == RIOT_DUO_SUPPORT:
         return SUPPORT
-    elif lane == RIOT_BOT and role == RIOT_DUO:
-        adc_champions = (22,51,42,119,81,104,222,429,96,236,21,133,15,18,29,6,110,67)
-        if champion_id in adc_champions:
-            return ADC
-        return SUPPORT
-    raise ValueError('Undefined position: lane=%r role=%r champion_id=%r' % (lane, role, champion_id))
+    return None
 
 
 class RiotAPI(object):
@@ -81,6 +78,17 @@ class RiotAPI(object):
         self.api_key = cfg.get('riot', 'api_key', vars=kw)
         self.bootstrap_summoner_ids = set(cfg.get('riot', 'bootstrap_summoner_ids', vars=kw).split(','))
         self.requests_per_second = cfg.getfloat('riot', 'requests_per_10min', vars=kw) / 600.0
+        self.winrate_file = cfg.get('riot', 'winrate_file', vars=kw)
+        self.load_winrate_file()
+
+    def load_winrate_file(self):
+        winrates = {}
+        with open(self.winrate_file) as f:
+            for row in csv.reader(f):
+                tier, position, champion_id, winrate = row
+                if '?' not in row:
+                    winrates.setdefault(tier, {}).setdefault(position, {})[int(champion_id)] = float(winrate)
+        self.winrates = winrates
 
     def call(self, path, throttle=True, **params):
         """Execute a remote API call and return the JSON results."""
@@ -94,11 +102,10 @@ class RiotAPI(object):
             if delta > 0 and throttle:
                 time.sleep(delta)
 
-            #print('START: ' + self.base_url + path)
-            #start = time.time()
+            start = time.time()
             response = requests.get(self.base_url + path, params=params)
-            #end = time.time()
-            #print('DONE: %.0fms' % (1000.0 * (end - start)))
+            end = time.time()
+            print('[%.0fms] %s' % (1000.0 * (end - start), path), file=sys.stderr)
             if throttle:
                 self.last_call = time.time()
 
@@ -147,14 +154,25 @@ class RiotAPI(object):
     @functools.lru_cache()
     def tier_division(self, summoner_id):
         """Return the (tier, division) of the given summoner."""
-        summoner_id = str(summoner_id)
-        response = self.call('/api/lol/na/v2.5/league/by-summoner/%s/entry' % summoner_id)
-        for league in response[summoner_id]:
-            if league['queue'] == 'RANKED_SOLO_5x5':
-                for entry in league['entries']:
-                    if entry['playerOrTeamId'] == summoner_id:
-                        return league['tier'].capitalize(), entry['division']
-        return None, None
+        try:
+            return self.tiers_divisions([summoner_id])[summoner_id]
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                return None, None
+            raise
+
+    def tiers_divisions(self, summoner_ids):
+        """Return the (tier, division) for the given summoners keyed by summoner_id."""
+        string_ids = [str(summoner_id) for summoner_id in summoner_ids]
+        response = self.call('/api/lol/na/v2.5/league/by-summoner/%s/entry' % ','.join(string_ids))
+        result = {}
+        for summoner_id, string_id in zip(summoner_ids, string_ids):
+            for league in response.get(string_id, []):
+                if league['queue'] == 'RANKED_SOLO_5x5':
+                    for entry in league['entries']:
+                        if entry['playerOrTeamId'] == string_id:
+                            result[summoner_id] = (league['tier'].capitalize(), entry['division'])
+        return result
 
     @functools.lru_cache()
     def match(self, match_id):
@@ -186,7 +204,7 @@ class RiotAPI(object):
                 return champion['stats']
         return None
 
-    def summoner_champion_summary(self, summoner_id):
+    def summoner_champion_summary(self, summoner_id, tier):
         """Return a summary of how a summoner performs on all champions."""
         wins = {}
         losses = {}
@@ -220,9 +238,8 @@ class RiotAPI(object):
                 role = timeline['role']
                 victory = participant['stats']['winner']
 
-                try:
-                    p = position(lane, role, champion_id)
-                except ValueError as e:
+                p = position(lane, role, champion_id)
+                if p is None:
                     continue # skip matches where we can't determine position
 
                 if victory:
@@ -235,16 +252,19 @@ class RiotAPI(object):
         # assemble results grouped by position and sorted by strength
         results = {}
         for p in POSITIONS:
+            tier_winrates = self.winrates.get(tier, {}).get(p.lower(), {})
             result = []
             cw = wins.get(p, {})
             cl = losses.get(p, {})
-            champions = set(cw.keys()).union(cl.keys())
+            champions = set(tier_winrates.keys()).union(cw.keys()).union(cl.keys())
             for champion_id in champions:
                 w = cw.get(champion_id, 0)
                 l = cl.get(champion_id, 0)
-                r = w / float(w + l)
-                t = 0.5 # FIXME: winrate for this summoner's tier in this position on this champion
-                k = 10.0 # smoothing factor, how quickly or slowly can expected winrate move
+                r = None
+                if (w + l) > 0:
+                    r = w / float(w + l)
+                t = tier_winrates.get(champion_id, 0.5) # assume 50% winrate with no data
+                k = 10.0 # smoothing factor, how quickly or slowly expected winrate moves
                 e = ((k * t) + w) / (k + w + l)
                 result.append((champion_id, w, l, r, t, e))
             results[p] = sorted(result, key=operator.itemgetter(5), reverse=True)
