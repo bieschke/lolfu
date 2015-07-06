@@ -18,6 +18,7 @@ import sys
 import time
 
 CURRENT_SEASON = 'SEASON2015'
+CURRENT_VERSION = '5.12'
 
 # Riot's lanes
 RIOT_TOP = 'TOP'
@@ -263,9 +264,9 @@ class RiotAPI(object):
                 r = None
                 if (w + l) > 0:
                     r = w / float(w + l)
-                t = tier_winrates.get(champion_id, 0.5) # assume 50% winrate with no data
-                k = 10.0 # smoothing factor, how quickly or slowly expected winrate moves
-                e = ((k * t) + w) / (k + w + l)
+                t = tier_winrates.get(champion_id)
+                k = max(10 - w - l, 0) # smoothing factor, how quickly or slowly expected winrate moves
+                e = ((k * (t is None and 0.5 or t)) + w) / (k + w + l)
                 result.append((champion_id, w, l, r, t, e))
             results[p] = sorted(result, key=operator.itemgetter(5), reverse=True)
         return results
