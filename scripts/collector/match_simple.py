@@ -12,6 +12,7 @@ import requests
 import riot
 import sys
 
+
 def main():
 
     api = riot.RiotAPI()
@@ -74,9 +75,11 @@ def main():
     while remaining_summoner_ids:
         summoner_id = remaining_summoner_ids.pop()
 
+        abort = False
         begin_index = 0
         step = 15 # maximum allowable through Riot API
-        while True:
+        while not abort:
+            abort = False
             # walk through summoner's match history STEP matches at a time
             end_index = begin_index + step
             matches = api.matchhistory(summoner_id, begin_index, end_index).get('matches', [])
@@ -86,8 +89,12 @@ def main():
 
             for match in matches:
                 match_id = match['matchId']
+                match_version = match['matchVersion']
                 if match_id in known_match_ids:
                     continue
+                if not match_version.startswith(riot.CURRENT_VERSION):
+                    abort = True
+                    break
                 known_match_ids.add(match_id)
 
                 # the matchhistory endpoint does not include information in all
@@ -134,12 +141,13 @@ def main():
                         remaining_summoner_ids.add(summoner_id)
 
                 # cheesy CSV formatting
-                output = [match_id, match['matchVersion'], match['matchCreation']]
+                output = [match_id, match_version, match['matchCreation']]
                 for participants in (winners, losers):
                     # align participants ordering with position ordering
                     for position in riot.POSITIONS:
                         output.extend(participants.get(position, ['?', '?', '?']))
                 print(','.join([str(i) for i in output]))
+
 
 if __name__ == '__main__':
     main()
