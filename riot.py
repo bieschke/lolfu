@@ -70,7 +70,6 @@ def position(lane, role, champion_id):
 class RiotAPI(object):
 
     base_url = 'https://na.api.pvp.net'
-    requests_per_second = 500.0 / 600.0  # 500 requests every 10 minutes
     last_call = time.time()
 
     def __init__(self, **kw):
@@ -79,12 +78,13 @@ class RiotAPI(object):
         """
         cfg = configparser.SafeConfigParser()
         cfg.read(os.path.dirname(os.path.abspath(__file__)) + '/riot.cfg')
-        self.dev_key = cfg.get('riot', 'dev_key', vars=kw)
+        self.api_key = cfg.get('riot', 'api_key', vars=kw)
         self.bootstrap_summoner_ids = set(cfg.get('riot', 'bootstrap_summoner_ids', vars=kw).split(','))
+        self.requests_per_second = cfg.getfloat('riot', 'requests_per_10min', vars=kw) / 600.0
 
     def call(self, path, throttle=True, **params):
         """Execute a remote API call and return the JSON results."""
-        params['api_key'] = self.dev_key
+        params['api_key'] = self.api_key
 
         retry_seconds = 60
         while True:
@@ -94,7 +94,11 @@ class RiotAPI(object):
             if delta > 0 and throttle:
                 time.sleep(delta)
 
+            #print('START: ' + self.base_url + path)
+            #start = time.time()
             response = requests.get(self.base_url + path, params=params)
+            #end = time.time()
+            #print('DONE: %.0fms' % (1000.0 * (end - start)))
             if throttle:
                 self.last_call = time.time()
 
