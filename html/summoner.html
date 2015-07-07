@@ -6,13 +6,14 @@
     <h1 class="text-center">${summoner} <small>${tier} ${division}</small></h1>
 </div>
 
+% if exploit_recs:
 <div class="row">
 
     <div class="col-md-2">
         <p class="lead text-right">Best champions to climb...</p>
     </div>
 
-% for rec in exploit_recs:
+    % for rec in exploit_recs:
 
     <div class="col-md-2 text-center">
         <div class="thumbnail well" style="padding: 0;">
@@ -27,17 +28,19 @@
         </div>
     </div>
 
-% endfor
+    % endfor
 
 </div>
+% endif
 
+% if explore_recs:
 <div class="row">
 
     <div class="col-md-2">
         <p class="lead text-right">Best champions to learn...</p>
     </div>
 
-% for rec in explore_recs:
+    % for rec in explore_recs:
 
     <div class="col-md-2 text-center">
         <div class="thumbnail well" style="padding: 0;">
@@ -52,17 +55,19 @@
         </div>
     </div>
 
-% endfor
+    % endfor
 
 </div>
+% endif
 
+% if bandit_recs:
 <div class="row">
 
     <div class="col-md-2">
         <p class="lead text-right">Best champions to do both...</p>
     </div>
 
-% for rec in bandit_recs:
+    % for rec in bandit_recs:
 
     <div class="col-md-2 text-center">
         <div class="thumbnail well" style="padding: 0;">
@@ -77,6 +82,7 @@
         </div>
     </div>
 
-% endfor
+    % endfor
 
 </div>
+% endif
