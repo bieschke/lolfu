@@ -49,10 +49,8 @@ class LOLBandit(object):
         for position in riot.POSITIONS:
             position_recs = []
             for champion_id, wins, losses, wrs, wrt, wre in scs.get(position, [])[:3]:
-                if position_recs and wre < 0.5:
-                    # don't recommend anything with less than 50% winrate
-                    # but always recommend at least one
-                    break
+                if wre < 0.5:
+                    break # don't recommend anything with less than 50% winrate
                 rec = {}
                 rec['champion_name'] = self.api.champion_name(champion_id)
                 rec['champion_image'] = self.api.champion_image(champion_id)
