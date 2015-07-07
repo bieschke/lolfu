@@ -251,22 +251,28 @@ class RiotAPI(object):
                     losses[p][champion_id] += 1
 
         # assemble results grouped by position and sorted by strength
-        results = {}
+        exploit = {}
+        explore = {}
+        bandit = {}
         for p in POSITIONS:
             tier_winrates = self.winrates.get(tier, {}).get(p.lower(), {})
-            result = []
             cw = wins.get(p, {})
             cl = losses.get(p, {})
-            champions = set(tier_winrates.keys()).union(cw.keys()).union(cl.keys())
-            for champion_id in champions:
-                w = cw.get(champion_id, 0)
-                l = cl.get(champion_id, 0)
-                r = None
-                if (w + l) > 0:
-                    r = w / float(w + l)
-                t = tier_winrates.get(champion_id)
-                k = max(10 - w - l, 0) # smoothing factor, how quickly or slowly expected winrate moves
-                e = ((k * (t is None and 0.5 or t)) + w) / (k + w + l)
-                result.append((champion_id, w, l, r, t, e))
-            results[p] = sorted(result, key=operator.itemgetter(5), reverse=True)
-        return results
+            for results, champion_ids in (
+                    (exploit, set(cw.keys()).union(cl.keys())),
+                    (explore, set(tier_winrates.keys()).difference(cw.keys()).difference(cl.keys())),
+                    (bandit, set(tier_winrates.keys()).union(cw.keys()).union(cl.keys())),
+                    ):
+                result = []
+                for champion_id in champion_ids:
+                    w = cw.get(champion_id, 0)
+                    l = cl.get(champion_id, 0)
+                    r = None
+                    if (w + l) > 0:
+                        r = w / float(w + l)
+                    t = tier_winrates.get(champion_id)
+                    k = max(10 - w - l, 0) # smoothing factor, how quickly or slowly expected winrate moves
+                    e = ((k * (t is None and 0.5 or t)) + w) / (k + w + l)
+                    result.append((champion_id, w, l, r, t, e))
+                results[p] = sorted(result, key=operator.itemgetter(5), reverse=True)
+        return exploit, explore, bandit

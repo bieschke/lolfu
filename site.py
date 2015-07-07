@@ -37,34 +37,38 @@ class LOLBandit(object):
     def index(self):
         return self.html('index.html')
 
-    @cherrypy.expose
-    def summoner(self, who='Lyte'):
-        """Return a webpage with details about the given summoner."""
-
-        summoner_id, summoner = self.api.summoner_by_name(who)
-        tier, division = self.api.tier_division(summoner_id)
-        scs = self.api.summoner_champion_summary(summoner_id, tier)
-
+    def recify(self, scs):
         recs = []
         for position in riot.POSITIONS:
-            position_recs = []
-            for champion_id, wins, losses, wrs, wrt, wre in scs.get(position, [])[:3]:
+            for champion_id, wins, losses, wrs, wrt, wre in scs.get(position, [])[:1]:
                 if wre < 0.5:
                     break # don't recommend anything with less than 50% winrate
                 rec = {}
+                rec['position'] = position
                 rec['champion_name'] = self.api.champion_name(champion_id)
                 rec['champion_image'] = self.api.champion_image(champion_id)
+                rec['champion_key'] = self.api.champion_key(champion_id)
                 rec['winrate_summoner'] = wrs
                 rec['winrate_tier'] = wrt
                 rec['winrate_expected'] = wre
                 rec['wins'] = wins
                 rec['losses'] = losses
-                position_recs.append(rec)
-            while len(position_recs) < 3:
-                position_recs.append(None)
-            recs.append(tuple(position_recs))
+                recs.append(rec)
+        return recs
 
-        return self.html('summoner.html', summoner=summoner, tier=tier, division=division, recs=recs)
+    @cherrypy.expose
+    def summoner(self, who):
+        """Return a webpage with details about the given summoner."""
+
+        summoner_id, summoner = self.api.summoner_by_name(who)
+        tier, division = self.api.tier_division(summoner_id)
+        exploit, explore, bandit = self.api.summoner_champion_summary(summoner_id, tier)
+        exploit_recs = self.recify(exploit)
+        explore_recs = self.recify(explore)
+        bandit_recs = self.recify(bandit)
+
+        return self.html('summoner.html', summoner=summoner, tier=tier, division=division,
+            exploit_recs=exploit_recs, explore_recs=explore_recs, bandit_recs=bandit_recs)
 
 
 if __name__ == '__main__':

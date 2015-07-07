@@ -2,28 +2,34 @@
 
 <%block name="title">lolfu</%block>
 
-<div class="jumbotron">
+<div class="row">
+<div class="col-md-8 col-md-offset-2">
 
-    <h1>Welcome to lolfu!</h1>
-    <p>Want to find out which champion you should play in each position? Enter your summoner name and we'll make a recommendation that optimizes your solo queue climb.</p>
+    <div class="jumbotron">
 
-    <form class="form-inline" method="get" action="summoner">
-        <div class="form-group">
-            <input type="text" class="form-control input-lg" placeholder="Summoner Name" name="who">
-        </div>
-        <button type="submit" class="btn btn-primary btn-lg">Go</button>
-    </form>
+        <h1>Welcome to lolfu!</h1>
+        <p>Want to find out which champion you should play in each position? Enter your summoner name and we'll make a recommendation that optimizes your solo queue climb.</p>
+
+        <form class="form-inline" method="get" action="summoner">
+            <div class="form-group">
+                <input type="text" class="form-control input-lg" placeholder="Summoner Name" name="who">
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg">Go</button>
+        </form>
+
+    </div>
+
+    <h3>How does this work?</h3>
+
+    <p class="lead">Most summoners are unaware of which champions in their champion pool are actually strongest. Lolfu computes the winrate for all champions you've played in all positions and informs you about which champions in your pool you should lean on to climb the solo queue ladder.
+
+    <p class="lead">Playing your highest winrate champions in each position greatly increases the likelihood of you climbing.</p>
+
+    <h3>Can I see how lolfu works?</h3>
+
+    <p class="lead">Lolfu is hosted at github <a href="https://github.com/bieschke/lolfu">here</a>.</p>
+
+    <h5><small>lolfu isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing League of Legends. League of Legends and Riot Games are trademarks or registered trademarks of Riot Games, Inc. League of Legends &copy; Riot Games, Inc.</small></h5>
 
 </div>
-
-<h3>How does this work!?</h3>
-
-<p class="lead">Lolfu uses science. We model champion selection as a <a href="https://en.wikipedia.org/wiki/Multi-armed_bandit">multi-armed bandit</a> problem where each champion is an arm. We then recommend champions using an epsilon-greedy strategy setting epsilon equal to zero.</p>
-
-<p class="lead">Why epsilon zero? Because there are too many champions and not enough time within a single season to spend too much time exploring your champion pool. With 100+ champions playing 10 games on each champion would be &gt;1000 games!</p>
-
-<h3>Where can I get the code for lolfu?</h3>
-
-<p class="lead">Lolfu is hosted at github <a href="https://github.com/bieschke/lolfu">here</a>.</p>
-
-<h6><small>lolfu isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing League of Legends. League of Legends and Riot Games are trademarks or registered trademarks of Riot Games, Inc. League of Legends &copy; Riot Games, Inc.</small></h6>
+</div>

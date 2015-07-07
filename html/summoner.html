@@ -1,49 +1,82 @@
 <%inherit file="base.html"/>
 
-<%def name="winrate(val)">
-% if val is None:
-n/a
-% else:
-${round(100 * val)}% winrate
-% endif
-</%def>
-
-<%def name="champion(summoner, tier, position, rec)">
-
-    <div class="col-md-3">
-% if rec is not None:
-        <div class="media">
-            <div class="media-left media-middle">
-                <a href="#"><img class="media-object img-circle" src="/static/img/champion/${rec['champion_image']}" alt="${rec['champion_name']}"></a>
-            </div>
-            <div class="media-body">
-                <h4 class="media-heading">${rec['champion_name']} <small>${position}</small></h4>
-                <h6>Expected: ${winrate(rec['winrate_expected'])}</h6>
-                <h6>${summoner}: ${winrate(rec['winrate_summoner'])}</h6>
-                <h6>${tier}: ${winrate(rec['winrate_tier'])}</h6>
-                <h6>${rec['wins']}W ${rec['losses']}L</h6>
-            </div>
-        </div>
-% endif
-    </div>
-
-</%def>
-
 <%block name="title">${summoner}</%block>
 
 <div class="page-header">
     <h1 class="text-center">${summoner} <small>${tier} ${division}</small></h1>
 </div>
 
-% for position, precs in zip(['Top', 'Jungle', 'Mid', 'ADC', 'Support'], recs):
+<div class="row">
 
-<div class="row" style="margin-top:50px;">
+    <div class="col-md-2">
+        <p class="lead text-right">Best champions to climb...</p>
+    </div>
 
-    <div class="col-md-2"><h3 class="text-right">${position}</h3></div>
-    ${champion(summoner, tier, position, precs[0])}
-    ${champion(summoner, tier, position, precs[1])}
-    ${champion(summoner, tier, position, precs[2])}
+% for rec in exploit_recs:
+
+    <div class="col-md-2 text-center">
+        <div class="thumbnail well" style="padding: 0;">
+            <h2><small>${rec['position'].capitalize()}</small></h2>
+            <img class="img-rounded" src="/static/img/champion/${rec['champion_image']}" alt="${rec['champion_name']}">
+            <div class="caption">
+                <h3>${rec['champion_name']}</h3>
+                <h4>${rec['wins']} Wins</h4>
+                <h4>${rec['losses']} Losses</h4>
+                <h4>${round(100 * rec['winrate_summoner'])}% Winrate</h4>
+            </div>
+        </div>
+    </div>
+
+% endfor
 
 </div>
 
+<div class="row">
+
+    <div class="col-md-2">
+        <p class="lead text-right">Best champions to learn...</p>
+    </div>
+
+% for rec in explore_recs:
+
+    <div class="col-md-2 text-center">
+        <div class="thumbnail well" style="padding: 0;">
+            <h2><small>${rec['position'].capitalize()}</small></h2>
+            <img class="img-rounded" src="/static/img/champion/${rec['champion_image']}" alt="${rec['champion_name']}">
+            <div class="caption">
+                <h3>${rec['champion_name']}</h3>
+                <h4>${rec['wins']} Wins</h4>
+                <h4>${rec['losses']} Losses</h4>
+                <h4>${round(100 * rec['winrate_tier'])}% ${tier} Winrate</h4>
+            </div>
+        </div>
+    </div>
+
 % endfor
+
+</div>
+
+<div class="row">
+
+    <div class="col-md-2">
+        <p class="lead text-right">Best champions to do both...</p>
+    </div>
+
+% for rec in bandit_recs:
+
+    <div class="col-md-2 text-center">
+        <div class="thumbnail well" style="padding: 0;">
+            <h2><small>${rec['position'].capitalize()}</small></h2>
+            <img class="img-rounded" src="/static/img/champion/${rec['champion_image']}" alt="${rec['champion_name']}">
+            <div class="caption">
+                <h3>${rec['champion_name']}</h3>
+                <h4>${rec['wins']} Wins</h4>
+                <h4>${rec['losses']} Losses</h4>
+                <h4>${round(100 * rec['winrate_expected'])}% Expected Winrate</h4>
+            </div>
+        </div>
+    </div>
+
+% endfor
+
+</div>
