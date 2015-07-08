@@ -57,7 +57,8 @@
             </div>
             % else:
             <h2><small>${rec.position.capitalize()}</small></h2>
-            <p class="lead">Practice more ${rec.position.lower()} champions.</p>
+            <p class="lead">${summoner} has no dominant ${rec.position.lower()} champion.</p>
+            <p class="lead">More matches played on ${rec.position.lower()} champions will help find one.</p>
             % endif
         </div>
     </div>
