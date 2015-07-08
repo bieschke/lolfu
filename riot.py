@@ -250,32 +250,36 @@ class RiotAPI(object):
                     losses.setdefault(p, {}).setdefault(champion_id, 0)
                     losses[p][champion_id] += 1
 
-        # assemble results grouped by position and sorted by strength
-        exploit = {}
-        explore = {}
-        bandit = {}
+        # assemble results sorted by expected winrate
+        results = []
         for p in POSITIONS:
-            tier_winrates = self.winrates.get(tier, {}).get(p.lower(), {})
             cw = wins.get(p, {})
             cl = losses.get(p, {})
-            bandit_ids = set(tier_winrates.keys()).union(cw.keys()).union(cl.keys())
-            exploit_ids = set([cid for cid in bandit_ids if (cw.get(cid, 0) + cl.get(cid, 0)) >= 10])
-            explore_ids = set([cid for cid in bandit_ids if (cw.get(cid, 0) + cl.get(cid, 0)) < 10])
-            for results, champion_ids in (
-                    (exploit, exploit_ids),
-                    (explore, explore_ids),
-                    (bandit, bandit_ids),
-                    ):
-                result = []
-                for champion_id in champion_ids:
-                    w = cw.get(champion_id, 0)
-                    l = cl.get(champion_id, 0)
-                    r = None
-                    if (w + l) > 0:
-                        r = w / float(w + l)
-                    t = tier_winrates.get(champion_id)
-                    k = max(10 - w - l, 0) # smoothing factor, how quickly or slowly expected winrate moves
-                    e = ((k * (t is None and 0.5 or t)) + w) / (k + w + l)
-                    result.append((champion_id, w, l, r, t, e))
-                results[p] = sorted(result, key=operator.itemgetter(5), reverse=True)
-        return exploit, explore, bandit
+            tier_winrates = self.winrates.get(tier, {}).get(p.lower(), {})
+            champion_ids = set(tier_winrates.keys()).union(cw.keys()).union(cl.keys())
+            for champion_id in champion_ids:
+                w = cw.get(champion_id, 0)
+                l = cl.get(champion_id, 0)
+                t = tier_winrates.get(champion_id, 0.5) # assume 50% winrate in absence of data
+                results.append(SummonerChampion(self, p, champion_id, t, w, l))
+        return sorted(results, key=operator.attrgetter('winrate_expected'), reverse=True)
+
+
+class SummonerChampion(object):
+    placeholder = False
+
+    def __init__(self, api, p, champion_id, twr, w, l):
+        self.position = p
+        self.champion_id = champion_id
+        self.champion_image = api.champion_image(champion_id)
+        self.champion_name = api.champion_name(champion_id)
+        if (w + l) > 0:
+            self.winrate_summoner = w / float(w + l)
+        else:
+            self.winrate_summoner = None
+        self.winrate_tier = twr
+        k = max(10 - w - l, 0) # smoothing factor, how quickly or slowly expected winrate moves
+        self.winrate_expected = ((k * twr) + w) / (k + w + l)
+        self.wins = w
+        self.losses = l
+        self.sessions = w + l

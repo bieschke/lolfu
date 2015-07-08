@@ -6,24 +6,24 @@
     <h1 class="text-center">${summoner} <small>${tier} ${division}</small></h1>
 </div>
 
-% if exploit_recs:
+% if climb_recs:
 <div class="row">
 
     <div class="col-md-2">
         <p class="lead text-right">Best champions to climb...</p>
     </div>
 
-    % for rec in exploit_recs:
+    % for rec in climb_recs:
 
     <div class="col-md-2 text-center">
         <div class="thumbnail well" style="padding: 0;">
-            <h2><small>${rec['position'].capitalize()}</small></h2>
-            <img class="img-rounded" src="/static/img/champion/${rec['champion_image']}" alt="${rec['champion_name']}">
+            <h2><small>${rec.position.capitalize()}</small></h2>
+            <img class="img-rounded" src="/static/img/champion/${rec.champion_image}" alt="${rec.champion_name}">
             <div class="caption">
-                <h3>${rec['champion_name']}</h3>
-                <h4>${rec['wins']} Wins</h4>
-                <h4>${rec['losses']} Losses</h4>
-                <h4>${round(100 * rec['winrate_summoner'])}% Winrate</h4>
+                <h3>${rec.champion_name}</h3>
+                <h4>${rec.wins} Wins</h4>
+                <h4>${rec.losses} Losses</h4>
+                <h4>${round(100 * rec.winrate_summoner)}% Winrate</h4>
             </div>
         </div>
     </div>
@@ -33,27 +33,30 @@
 </div>
 % endif
 
-% if explore_recs:
+% if position_recs:
 <div class="row">
 
     <div class="col-md-2">
-        <p class="lead text-right">Best champions to learn...</p>
+        <p class="lead text-right">Best champions by position...</p>
     </div>
 
-    % for rec in explore_recs:
+    % for rec in position_recs:
 
     <div class="col-md-2 text-center">
         <div class="thumbnail well" style="padding: 0;">
-            <h2><small>${rec['position'].capitalize()}</small></h2>
-            <img class="img-rounded" src="/static/img/champion/${rec['champion_image']}" alt="${rec['champion_name']}">
+            % if not rec.placeholder:
+            <h2><small>${rec.position.capitalize()}</small></h2>
+            <img class="img-rounded" src="/static/img/champion/${rec.champion_image}" alt="${rec.champion_name}">
             <div class="caption">
-                <h3>${rec['champion_name']}</h3>
-                <h4>${rec['wins']} Wins</h4>
-                <h4>${rec['losses']} Losses</h4>
-                % if rec['winrate_tier']:
-                <h4>${round(100 * rec['winrate_tier'])}% ${tier} Winrate</h4>
-                % endif
+                <h3>${rec.champion_name}</h3>
+                <h4>${rec.wins} Wins</h4>
+                <h4>${rec.losses} Losses</h4>
+                <h4>${round(100 * rec.winrate_summoner)}% Winrate</h4>
             </div>
+            % else:
+            <h2><small>${rec.position.capitalize()}</small></h2>
+            <p class="lead">Practice more ${rec.position.lower()} champions.</p>
+            % endif
         </div>
     </div>
 
@@ -62,25 +65,30 @@
 </div>
 % endif
 
-% if exploit_recs and explore_recs and bandit_recs:
+% if practice_recs:
 <div class="row">
 
     <div class="col-md-2">
-        <p class="lead text-right">Best champions to do both...</p>
+        <p class="lead text-right">Best champions to practice...</p>
     </div>
 
-    % for rec in bandit_recs:
+    % for rec in practice_recs:
 
     <div class="col-md-2 text-center">
         <div class="thumbnail well" style="padding: 0;">
-            <h2><small>${rec['position'].capitalize()}</small></h2>
-            <img class="img-rounded" src="/static/img/champion/${rec['champion_image']}" alt="${rec['champion_name']}">
+            % if not rec.placeholder:
+            <h2><small>${rec.position.capitalize()}</small></h2>
+            <img class="img-rounded" src="/static/img/champion/${rec.champion_image}" alt="${rec.champion_name}">
             <div class="caption">
-                <h3>${rec['champion_name']}</h3>
-                <h4>${rec['wins']} Wins</h4>
-                <h4>${rec['losses']} Losses</h4>
-                <h4>${round(100 * rec['winrate_expected'])}% Expected Winrate</h4>
+                <h3>${rec.champion_name}</h3>
+                <h4>${rec.wins} Wins</h4>
+                <h4>${rec.losses} Losses</h4>
+                <h4>${round(100 * rec.winrate_expected)}% Predicted Winrate</h4>
             </div>
+            % else:
+            <h2><small>${rec.position.capitalize()}</small></h2>
+            <p class="lead">Can't find any ${rec.position.lower()} champions worthwhile for practice.</p>
+            % endif
         </div>
     </div>
 

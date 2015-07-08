@@ -1,11 +1,8 @@
 #!/usr/bin/env python3.4
 """League of Legends website that allows players to look up their summoner
-by name, and receive a webpage that advises them what are the winrate
-optimal champions to play in each position. The optimization is performed
-as a simple approach to the multi-armed bandit problem.
+by name and receive a webpage that advises them about which champions to play.
 
 http://leagueoflegends.com
-https://en.wikipedia.org/wiki/Multi-armed_bandit
 """
 
 import argparse
@@ -37,24 +34,23 @@ class LOLBandit(object):
     def index(self):
         return self.html('index.html')
 
-    def recify(self, scs):
-        recs = []
-        for position in riot.POSITIONS:
-            for champion_id, wins, losses, wrs, wrt, wre in scs.get(position, [])[:1]:
-                if wre < 0.5:
-                    break # don't recommend anything with less than 50% winrate
-                rec = {}
-                rec['position'] = position
-                rec['champion_name'] = self.api.champion_name(champion_id)
-                rec['champion_image'] = self.api.champion_image(champion_id)
-                rec['champion_key'] = self.api.champion_key(champion_id)
-                rec['winrate_summoner'] = wrs
-                rec['winrate_tier'] = wrt
-                rec['winrate_expected'] = wre
-                rec['wins'] = wins
-                rec['losses'] = losses
-                recs.append(rec)
-        return recs
+    def one_rec_per_position(self, recs):
+        class Placeholder:
+            placeholder = True
+            def __init__(self, p):
+                self.position = p
+        results = []
+        for p in riot.POSITIONS:
+            for rec in recs:
+                if rec.position == p:
+                    results.append(rec)
+                    break
+            else:
+                results.append(Placeholder(p))
+        for result in results:
+            if not result.placeholder:
+                return results
+        return []
 
     @cherrypy.expose
     def summoner(self, who):
@@ -62,13 +58,13 @@ class LOLBandit(object):
 
         summoner_id, summoner = self.api.summoner_by_name(who)
         tier, division = self.api.tier_division(summoner_id)
-        exploit, explore, bandit = self.api.summoner_champion_summary(summoner_id, tier)
-        exploit_recs = self.recify(exploit)
-        explore_recs = self.recify(explore)
-        bandit_recs = self.recify(bandit)
+        sc = self.api.summoner_champion_summary(summoner_id, tier)
+        climb_recs = [c for c in sc if c.sessions >= 10 and c.winrate_expected > .5][:5]
+        position_recs = self.one_rec_per_position([c for c in sc if c.sessions >= 10])
+        practice_recs = self.one_rec_per_position([c for c in sc if c.sessions < 10 and c.winrate_expected > .5])
 
         return self.html('summoner.html', summoner=summoner, tier=tier, division=division,
-            exploit_recs=exploit_recs, explore_recs=explore_recs, bandit_recs=bandit_recs)
+            climb_recs=climb_recs, position_recs=position_recs, practice_recs=practice_recs)
 
 
 if __name__ == '__main__':
