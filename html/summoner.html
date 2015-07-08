@@ -50,7 +50,9 @@
                 <h3>${rec['champion_name']}</h3>
                 <h4>${rec['wins']} Wins</h4>
                 <h4>${rec['losses']} Losses</h4>
+                % if rec['winrate_tier']:
                 <h4>${round(100 * rec['winrate_tier'])}% ${tier} Winrate</h4>
+                % endif
             </div>
         </div>
     </div>
@@ -60,7 +62,7 @@
 </div>
 % endif
 
-% if bandit_recs:
+% if exploit_recs and explore_recs and bandit_recs:
 <div class="row">
 
     <div class="col-md-2">
