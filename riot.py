@@ -100,7 +100,7 @@ class RiotAPI(object):
             start = time.time()
             response = requests.get(self.base_url + path, params=params)
             end = time.time()
-            print('[%.0fms] %s' % (1000.0 * (end - start), path), file=sys.stderr)
+            print('[%.0fms] %d %s' % (1000.0 * (end - start), response.status_code, path), file=sys.stderr)
 
             # https://developer.riotgames.com/docs/response-codes
             # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
