@@ -1,6 +1,7 @@
 #!/usr/bin/env python3.4
 """Program that spiders the Riot API looking for matches by as many summoners
 as it can discover. One ARFF data line is written to stdout for each match.
+
 This program also accepts optional command line arguments, where each argument
 is a previously collected ARFF file. Supplying the previously created data
 files allows this program to skip existing matches and only output data for
@@ -11,11 +12,11 @@ import fileinput
 import requests
 import riot
 import sys
+import threading
+import queue
 
 
 def main():
-
-    api = riot.RiotAPI()
 
     print('''@RELATION lol_match_simple
 
@@ -55,14 +56,16 @@ def main():
 
 @DATA''' % tuple([riot.RIOT_CHAMPION_IDS]*10))
 
-    # start by bootstrapping summoner ids
+    api = riot.RiotAPI()
+
+    # bootstrap our inital seed list of summoner ids
     known_summoner_ids = api.bootstrap_summoner_ids.copy()
-    remaining_summoner_ids = known_summoner_ids.copy()
-    known_match_ids = set()
+    summoner_queue = queue.Queue()
 
     # Optional command line arguments for this program are the names of all previously
     # collected data files. Accumulate all of the match ids for which we have already
     # collected data.
+    known_match_ids = set()
     if sys.argv[1:]:
         for line in fileinput.input():
             try:
@@ -72,39 +75,77 @@ def main():
                 pass # ignore any lines that don't start with a number
         print('%d preexisting matches found' % len(known_match_ids), file=sys.stderr)
 
-    while remaining_summoner_ids:
-        summoner_id = remaining_summoner_ids.pop()
+    # establish thread shared queue for printing
+    print_queue = queue.Queue()
 
+    # fire up worker threads to actually perform roundtrips to the LOL API
+    for i in range(100):
+        WorkerThread(print_queue, api, known_summoner_ids, known_match_ids, summoner_queue).start()
+
+    # fire up thread responsible for printing results
+    PrintThread(print_queue).start()
+
+    # queue seed work for worker threads
+    for summoner_id in known_summoner_ids:
+        summoner_queue.put(summoner_id)
+
+    # wait for worker threads
+    summoner_queue.join()
+
+    # then wait for printer thread
+    print_queue.join()
+
+
+class WorkerThread(threading.Thread):
+
+    def __init__(self, print_queue, api, known_summoner_ids, known_match_ids, summoner_queue):
+        threading.Thread.__init__(self, daemon=True)
+        self.print_queue = print_queue
+        self.api = api
+        self.known_summoner_ids = known_summoner_ids
+        self.known_match_ids = known_match_ids
+        self.summoner_queue = summoner_queue
+
+    def run(self):
+        while True:
+            summoner_id = self.summoner_queue.get()
+            self.work(summoner_id)
+            self.summoner_queue.task_done()
+
+    def work(self, summoner_id):
         abort = False
         begin_index = 0
         step = 15 # maximum allowable through Riot API
         while not abort:
             abort = False
+
             # walk through summoner's match history STEP matches at a time
             end_index = begin_index + step
-            matches = api.matchhistory(summoner_id, begin_index, end_index).get('matches', [])
+            matches = self.api.matchhistory(summoner_id, begin_index, end_index).get('matches', [])
             if not matches:
                 break
             begin_index += step
 
             for match in matches:
+
                 match_id = match['matchId']
+                if match_id in self.known_match_ids:
+                    continue # skip already observed matches
+                self.known_match_ids.add(match_id)
+
                 match_version = match['matchVersion']
-                if match_id in known_match_ids:
-                    continue
                 if not match_version.startswith(riot.CURRENT_VERSION):
                     abort = True
                     break
-                known_match_ids.add(match_id)
 
                 # the matchhistory endpoint does not include information in all
                 # participants within the match, to receive those we issue a second
                 # call to the match endpoint.
                 try:
-                    match = api.match(match_id)
+                    match = self.api.match(match_id)
                 except requests.exceptions.HTTPError as e:
                     if e.response.status_code == 404:
-                        continue # skip matches that no longer exist
+                        continue # skip matches that do not exist
                     raise
 
                 # create a mapping of participant ids to summoner ids
@@ -115,7 +156,7 @@ def main():
                     summoner_ids[participant_id] = summoner_id
 
                 # create a mapping of summoner ids to tier and divisions
-                tier_divisions = api.tiers_divisions(summoner_ids.values())
+                tier_divisions = self.api.tiers_divisions(summoner_ids.values())
 
                 # collect data for each participant
                 winners = {}
@@ -136,9 +177,9 @@ def main():
                         losers[position] = (summoner_id, champion_id, tier)
 
                     # remember any newly discovered summoners in this match
-                    if summoner_id not in known_summoner_ids:
-                        known_summoner_ids.add(summoner_id)
-                        remaining_summoner_ids.add(summoner_id)
+                    if summoner_id not in self.known_summoner_ids:
+                        self.known_summoner_ids.add(summoner_id)
+                        self.summoner_queue.put(summoner_id)
 
                 # cheesy CSV formatting
                 output = [match_id, match_version, match['matchCreation']]
@@ -146,7 +187,20 @@ def main():
                     # align participants ordering with position ordering
                     for position in riot.POSITIONS:
                         output.extend(participants.get(position, ['?', '?', '?']))
-                print(','.join([str(i) for i in output]))
+                self.print_queue.put(','.join([str(i) for i in output]))
+
+
+class PrintThread(threading.Thread):
+
+    def __init__(self, print_queue):
+        threading.Thread.__init__(self, daemon=True)
+        self.print_queue = print_queue
+
+    def run(self):
+        while True:
+            line = self.print_queue.get()
+            print(line)
+            self.print_queue.task_done()
 
 
 if __name__ == '__main__':
