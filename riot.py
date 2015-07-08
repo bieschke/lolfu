@@ -258,10 +258,13 @@ class RiotAPI(object):
             tier_winrates = self.winrates.get(tier, {}).get(p.lower(), {})
             cw = wins.get(p, {})
             cl = losses.get(p, {})
+            bandit_ids = set(tier_winrates.keys()).union(cw.keys()).union(cl.keys())
+            exploit_ids = set([cid for cid in bandit_ids if (cw.get(cid, 0) + cl.get(cid, 0)) >= 10])
+            explore_ids = set([cid for cid in bandit_ids if (cw.get(cid, 0) + cl.get(cid, 0)) < 10])
             for results, champion_ids in (
-                    (exploit, set(cw.keys()).union(cl.keys())),
-                    (explore, set(tier_winrates.keys()).difference(cw.keys()).difference(cl.keys())),
-                    (bandit, set(tier_winrates.keys()).union(cw.keys()).union(cl.keys())),
+                    (exploit, exploit_ids),
+                    (explore, explore_ids),
+                    (bandit, bandit_ids),
                     ):
                 result = []
                 for champion_id in champion_ids:
