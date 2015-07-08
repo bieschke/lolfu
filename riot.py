@@ -78,7 +78,6 @@ class RiotAPI(object):
         cfg.read(os.path.dirname(os.path.abspath(__file__)) + '/riot.cfg')
         self.api_key = cfg.get('riot', 'api_key', vars=kw)
         self.bootstrap_summoner_ids = set(cfg.get('riot', 'bootstrap_summoner_ids', vars=kw).split(','))
-        self.requests_per_second = cfg.getfloat('riot', 'requests_per_10min', vars=kw) / 600.0
         self.winrate_file = cfg.get('riot', 'winrate_file', vars=kw)
         self.load_winrate_file()
 
@@ -91,24 +90,17 @@ class RiotAPI(object):
                     winrates.setdefault(tier, {}).setdefault(position, {})[int(champion_id)] = float(winrate)
         self.winrates = winrates
 
-    def call(self, path, throttle=True, **params):
+    def call(self, path, **params):
         """Execute a remote API call and return the JSON results."""
         params['api_key'] = self.api_key
 
         retry_seconds = 60
         while True:
 
-            next_call = self.last_call + (1 / self.requests_per_second)
-            delta = next_call - time.time()
-            if delta > 0 and throttle:
-                time.sleep(delta)
-
             start = time.time()
             response = requests.get(self.base_url + path, params=params)
             end = time.time()
             print('[%.0fms] %s' % (1000.0 * (end - start), path), file=sys.stderr)
-            if throttle:
-                self.last_call = time.time()
 
             # https://developer.riotgames.com/docs/response-codes
             # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
@@ -145,12 +137,12 @@ class RiotAPI(object):
     @functools.lru_cache()
     def champion_name(self, champion_id):
         """Return the name of the champion associated with the given champion ID."""
-        return self.call('/api/lol/static-data/na/v1.2/champion/%d' % int(champion_id), throttle=False)['name']
+        return self.call('/api/lol/static-data/na/v1.2/champion/%d' % int(champion_id))['name']
 
     @functools.lru_cache()
     def champions(self):
         """Return all champions."""
-        return self.call('/api/lol/static-data/na/v1.2/champion', champData='image', throttle=False)
+        return self.call('/api/lol/static-data/na/v1.2/champion', champData='image')
 
     @functools.lru_cache()
     def tier_division(self, summoner_id):
