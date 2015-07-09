@@ -47,8 +47,8 @@ class Lolfu:
         self.losses = {}
 
         # accumulate all of the ids for which we have already collected data
-        known_match_ids = set()
-        known_summoner_ids = set()
+        self.known_match_ids = set()
+        self.known_summoner_ids = set()
         with open(MATCH_FILE, 'r') as f:
             for line in f:
                 row = line.strip().split(',')
@@ -68,7 +68,7 @@ class Lolfu:
                 except ValueError:
                     pass # skip malformed lines
 
-                known_match_ids.add(int(match_id))
+                self.known_match_ids.add(int(match_id))
 
                 if '?' in row:
                     continue # skip matches with unknown data
@@ -85,7 +85,7 @@ class Lolfu:
                         loser_adc_summoner_id,
                         loser_support_summoner_id,
                         ):
-                    known_summoner_ids.add(int(summoner_id))
+                    self.known_summoner_ids.add(int(summoner_id))
 
                 for (champion_id, tier), position in zip((
                         (winner_top_champion_id, winner_top_tier),
@@ -107,9 +107,6 @@ class Lolfu:
                     self.losses.setdefault(tier, {}).setdefault(position, {}).setdefault(int(champion_id), 0)
                     self.losses[tier][position][int(champion_id)] += 1
 
-        print('%d preexisting matches found' % len(known_match_ids), file=sys.stderr)
-        print('%d preexisting summoners found' % len(known_summoner_ids), file=sys.stderr)
-
         # establish thread for shared printing
         match_print_queue = queue.Queue()
         PrintThread(match_print_queue, open(MATCH_FILE, 'a')).start()
@@ -117,10 +114,10 @@ class Lolfu:
         # fire up worker threads to actually perform roundtrips to the LOL API
         match_summoner_queue = queue.Queue()
         for i in range(100):
-            MatchCollectorThread(self.api, match_summoner_queue, match_print_queue, known_summoner_ids, known_match_ids).start()
+            MatchCollectorThread(self.api, match_summoner_queue, match_print_queue, self.known_summoner_ids, self.known_match_ids).start()
 
         # kickstart worker threads with known summoner ids
-        for summoner_id in known_summoner_ids:
+        for summoner_id in self.known_summoner_ids:
             match_summoner_queue.put(summoner_id)
 
     def html(self, template, **kw):
@@ -129,7 +126,7 @@ class Lolfu:
     @cherrypy.expose
     def index(self):
         """Return the homepage."""
-        return self.html('index.html')
+        return self.html('index.html', match_count=len(self.known_match_ids), summoner_count=len(self.known_summoner_ids))
 
     @cherrypy.expose
     def summoner(self, who):
@@ -157,7 +154,8 @@ class Lolfu:
         practice_recs = one_rec_per_position([c for c in sc if c.sessions < 10 and c.winrate_expected > .5])
 
         return self.html('summoner.html', summoner=summoner, tier=tier, division=division,
-            climb_recs=climb_recs, position_recs=position_recs, practice_recs=practice_recs)
+            climb_recs=climb_recs, position_recs=position_recs, practice_recs=practice_recs,
+            match_count=len(self.known_match_ids), summoner_count=len(self.known_summoner_ids))
 
     def summoner_perfomance(self, summoner_id, tier):
         """Return a summary of how a summoner performs on all champions."""
