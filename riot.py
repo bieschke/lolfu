@@ -9,9 +9,8 @@ https://developer.riotgames.com/api/methods
 """
 
 import configparser
-import csv
 import functools
-import operator
+import os
 import os.path
 import requests
 import sys
@@ -43,8 +42,6 @@ ADC = 'ADC'
 SUPPORT = 'SUPPORT'
 POSITIONS = (TOP, JUNGLE, MID, ADC, SUPPORT)
 
-CHAMPION_OVERALL = 0 # magic id used to indicate all champions for a summoner
-
 
 def position(lane, role, champion_id):
     """Return the position for the given lane and role."""
@@ -71,20 +68,8 @@ class RiotAPI:
         explicitly as a keyword argument in this constructor.
         """
         cfg = configparser.SafeConfigParser()
-        cfg.read(os.path.dirname(os.path.abspath(__file__)) + '/riot.cfg')
+        cfg.read(os.path.dirname(os.path.abspath(__file__)) + os.sep + 'riot.cfg')
         self.api_key = cfg.get('riot', 'api_key', vars=kw)
-        self.bootstrap_summoner_ids = set(cfg.get('riot', 'bootstrap_summoner_ids', vars=kw).split(','))
-        self.winrate_file = cfg.get('riot', 'winrate_file', vars=kw)
-        self.load_winrate_file()
-
-    def load_winrate_file(self):
-        winrates = {}
-        with open(self.winrate_file) as f:
-            for row in csv.reader(f):
-                tier, position, champion_id, winrate = row
-                if '?' not in row:
-                    winrates.setdefault(tier, {}).setdefault(position, {})[int(champion_id)] = float(winrate)
-        self.winrates = winrates
 
     def call(self, path, **params):
         """Execute a remote API call and return the JSON results."""
@@ -117,22 +102,18 @@ class RiotAPI:
     @functools.lru_cache()
     def champion_image(self, champion_id):
         """Return the image filename for the given champion."""
+        if champion_id == 223:
+            return "TahmKench.png" # FIXME
         for champion in self.champions()['data'].values():
             if champion_id == champion['id']:
                 return champion['image']['full']
         return None
 
     @functools.lru_cache()
-    def champion_key(self, champion_id):
-        """Return the text key for the given champion."""
-        for champion in self.champions()['data'].values():
-            if champion_id == champion['id']:
-                return champion['key']
-        return None
-
-    @functools.lru_cache()
     def champion_name(self, champion_id):
         """Return the name of the champion associated with the given champion ID."""
+        if champion_id == 223:
+            return 'Tahm Kench' # FIXME
         return self.call('/api/lol/static-data/na/v1.2/champion/%d' % int(champion_id))['name']
 
     @functools.lru_cache()
@@ -175,7 +156,7 @@ class RiotAPI:
 
     @functools.lru_cache()
     def summoner_by_name(self, name):
-        """Return the summoner having the given name(s) as CSV."""
+        """Return the summoner having the given name."""
         for summoner in self.call('/api/lol/na/v1.4/summoner/by-name/%s' % name).values():
             return summoner['id'], summoner['name']
         return None, None
@@ -192,82 +173,3 @@ class RiotAPI:
             if champion_id == champion['id']:
                 return champion['stats']
         return None
-
-    def summoner_champion_summary(self, summoner_id, tier):
-        """Return a summary of how a summoner performs on all champions."""
-        wins = {}
-        losses = {}
-
-        abort = False
-        begin_index = 0
-        step = 15 # maximum allowable through Riot API
-        while not abort:
-
-            # walk through summoner's match history STEP matches at a time
-            end_index = begin_index + step
-            matches = self.matchhistory(summoner_id, begin_index, end_index).get('matches', [])
-            if not matches:
-                break
-            begin_index += step
-
-            # process each match
-            for match in matches:
-                match_id = match['matchId']
-                if match['season'] != CURRENT_SEASON:
-                    abort = True
-                    break
-
-                if len(match['participants']) != 1:
-                    raise ValueError('Expected exactly one participant')
-                participant = match['participants'][0]
-
-                champion_id = participant['championId']
-                timeline = participant['timeline']
-                lane = timeline['lane']
-                role = timeline['role']
-                victory = participant['stats']['winner']
-
-                p = position(lane, role, champion_id)
-                if p is None:
-                    continue # skip matches where we can't determine position
-
-                if victory:
-                    wins.setdefault(p, {}).setdefault(champion_id, 0)
-                    wins[p][champion_id] += 1
-                else:
-                    losses.setdefault(p, {}).setdefault(champion_id, 0)
-                    losses[p][champion_id] += 1
-
-        # assemble results sorted by expected winrate
-        results = []
-        for p in POSITIONS:
-            cw = wins.get(p, {})
-            cl = losses.get(p, {})
-            tier_winrates = self.winrates.get(tier, {}).get(p.lower(), {})
-            champion_ids = set(tier_winrates.keys()).union(cw.keys()).union(cl.keys())
-            for champion_id in champion_ids:
-                w = cw.get(champion_id, 0)
-                l = cl.get(champion_id, 0)
-                t = tier_winrates.get(champion_id, 0.5) # assume 50% winrate in absence of data
-                results.append(SummonerChampion(self, p, champion_id, t, w, l))
-        return sorted(results, key=operator.attrgetter('winrate_expected'), reverse=True)
-
-
-class SummonerChampion:
-    placeholder = False
-
-    def __init__(self, api, p, champion_id, twr, w, l):
-        self.position = p
-        self.champion_id = champion_id
-        self.champion_image = api.champion_image(champion_id)
-        self.champion_name = api.champion_name(champion_id)
-        if (w + l) > 0:
-            self.winrate_summoner = w / float(w + l)
-        else:
-            self.winrate_summoner = None
-        self.winrate_tier = twr
-        k = max(10 - w - l, 0) # smoothing factor, how quickly or slowly expected winrate moves
-        self.winrate_expected = ((k * twr) + w) / (k + w + l)
-        self.wins = w
-        self.losses = l
-        self.sessions = w + l

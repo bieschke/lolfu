@@ -7,6 +7,7 @@ http://leagueoflegends.com
 
 import argparse
 import cherrypy
+import operator
 import os
 import os.path
 import riot
@@ -23,8 +24,6 @@ TMP_DIR = os.path.dirname(os.path.abspath(__file__)) + os.sep + 'tmp'
 
 
 MATCH_FILE = DATA_DIR + os.sep + 'match.csv'
-SUMMONER_FILE = DATA_DIR + os.sep + 'summoner.csv'
-WINRATE_FILE = DATA_DIR + os.sep + 'winrate.csv'
 
 
 lookup = TemplateLookup(directories=HTML_DIR, module_directory=TMP_DIR)
@@ -43,20 +42,71 @@ class Lolfu:
     def background_match_collection(self):
         """Launch daemon threads to collect match data."""
 
-        # accumulate all of the match ids for which we have already collected data
+        # win and session counts to be accumulated
+        self.wins = {}
+        self.losses = {}
+
+        # accumulate all of the ids for which we have already collected data
         known_match_ids = set()
         known_summoner_ids = set()
         with open(MATCH_FILE, 'r') as f:
             for line in f:
-                # rely on the first column being the match id
-                known_match_ids.add(int(line.split(',')[0]))
-                # these column indexes are summoner ids
-                for i in (3, 6, 9, 12, 15, 18, 21, 24, 27, 30):
-                    val = line.split(',')[i]
-                    try:
-                        known_summoner_ids.add(int(val))
-                    except ValueError:
-                        pass # unknown summoner ids won't parse here
+                row = line.strip().split(',')
+                try:
+                    match_id, match_version, match_creation, \
+                        winner_top_summoner_id, winner_top_champion_id, winner_top_tier, \
+                        winner_jungler_summoner_id, winner_jungler_champion_id, winner_jungler_tier, \
+                        winner_mid_summoner_id, winner_mid_champion_id, winner_mid_tier, \
+                        winner_adc_summoner_id, winner_adc_champion_id, winner_adc_tier, \
+                        winner_support_summoner_id, winner_support_champion_id, winner_support_tier, \
+                        loser_top_summoner_id, loser_top_champion_id, loser_top_tier, \
+                        loser_jungler_summoner_id, loser_jungler_champion_id, loser_jungler_tier, \
+                        loser_mid_summoner_id, loser_mid_champion_id, loser_mid_tier, \
+                        loser_adc_summoner_id, loser_adc_champion_id, loser_adc_tier, \
+                        loser_support_summoner_id, loser_support_champion_id, loser_support_tier \
+                        = row
+                except ValueError:
+                    pass # skip malformed lines
+
+                known_match_ids.add(int(match_id))
+
+                if '?' in row:
+                    continue # skip matches with unknown data
+
+                for summoner_id in (
+                        winner_top_summoner_id,
+                        winner_jungler_summoner_id,
+                        winner_mid_summoner_id,
+                        winner_adc_summoner_id,
+                        winner_support_summoner_id,
+                        loser_top_summoner_id,
+                        loser_jungler_summoner_id,
+                        loser_mid_summoner_id,
+                        loser_adc_summoner_id,
+                        loser_support_summoner_id,
+                        ):
+                    known_summoner_ids.add(int(summoner_id))
+
+                for (champion_id, tier), position in zip((
+                        (winner_top_champion_id, winner_top_tier),
+                        (winner_jungler_champion_id, winner_jungler_tier),
+                        (winner_mid_champion_id, winner_mid_tier),
+                        (winner_adc_champion_id, winner_adc_tier),
+                        (winner_support_champion_id, winner_support_tier),
+                        ), riot.POSITIONS):
+                    self.wins.setdefault(tier, {}).setdefault(position, {}).setdefault(int(champion_id), 0)
+                    self.wins[tier][position][int(champion_id)] += 1
+
+                for (champion_id, tier), position in zip((
+                        (loser_top_champion_id, loser_top_tier),
+                        (loser_jungler_champion_id, loser_jungler_tier),
+                        (loser_mid_champion_id, loser_mid_tier),
+                        (loser_adc_champion_id, loser_adc_tier),
+                        (loser_support_champion_id, loser_support_tier),
+                        ), riot.POSITIONS):
+                    self.losses.setdefault(tier, {}).setdefault(position, {}).setdefault(int(champion_id), 0)
+                    self.losses[tier][position][int(champion_id)] += 1
+
         print('%d preexisting matches found' % len(known_match_ids), file=sys.stderr)
         print('%d preexisting summoners found' % len(known_summoner_ids), file=sys.stderr)
 
@@ -78,6 +128,7 @@ class Lolfu:
 
     @cherrypy.expose
     def index(self):
+        """Return the homepage."""
         return self.html('index.html')
 
     @cherrypy.expose
@@ -85,10 +136,6 @@ class Lolfu:
         """Return a webpage with details about the given summoner."""
 
         def one_rec_per_position(recs):
-            class Placeholder:
-                placeholder = True
-                def __init__(self, p):
-                    self.position = p
             results = []
             for p in riot.POSITIONS:
                 for rec in recs:
@@ -104,13 +151,107 @@ class Lolfu:
 
         summoner_id, summoner = self.api.summoner_by_name(who)
         tier, division = self.api.tier_division(summoner_id)
-        sc = self.api.summoner_champion_summary(summoner_id, tier)
+        sc = self.summoner_perfomance(summoner_id, tier)
         climb_recs = [c for c in sc if c.sessions >= 10 and c.winrate_expected > .5][:5]
         position_recs = one_rec_per_position([c for c in sc if c.sessions >= 10])
         practice_recs = one_rec_per_position([c for c in sc if c.sessions < 10 and c.winrate_expected > .5])
 
         return self.html('summoner.html', summoner=summoner, tier=tier, division=division,
             climb_recs=climb_recs, position_recs=position_recs, practice_recs=practice_recs)
+
+    def summoner_perfomance(self, summoner_id, tier):
+        """Return a summary of how a summoner performs on all champions."""
+        wins = {}
+        losses = {}
+
+        abort = False
+        begin_index = 0
+        step = 15 # maximum allowable through Riot API
+        while not abort:
+
+            # walk through summoner's match history STEP matches at a time
+            end_index = begin_index + step
+            matches = self.api.matchhistory(summoner_id, begin_index, end_index).get('matches', [])
+            if not matches:
+                break
+            begin_index += step
+
+            # process each match
+            for match in matches:
+                match_id = match['matchId']
+                if match['season'] != riot.CURRENT_SEASON:
+                    abort = True
+                    break
+
+                if len(match['participants']) != 1:
+                    raise ValueError('Expected exactly one participant')
+                participant = match['participants'][0]
+
+                champion_id = participant['championId']
+                timeline = participant['timeline']
+                lane = timeline['lane']
+                role = timeline['role']
+                victory = participant['stats']['winner']
+
+                position = riot.position(lane, role, champion_id)
+                if position is None:
+                    continue # skip matches where we can't determine position
+
+                if victory:
+                    wins.setdefault(position, {}).setdefault(champion_id, 0)
+                    wins[position][champion_id] += 1
+                else:
+                    losses.setdefault(position, {}).setdefault(champion_id, 0)
+                    losses[position][champion_id] += 1
+
+        # assemble results sorted by expected winrate
+        results = []
+        for position in riot.POSITIONS:
+            win_champions = self.wins.get(tier, {}).get(position, {}).keys()
+            loss_champions = self.losses.get(tier, {}).get(position, {}).keys()
+            cw = wins.get(position, {})
+            cl = losses.get(position, {})
+            champion_ids = set(win_champions).union(loss_champions).union(cw.keys()).union(cl.keys())
+            for champion_id in champion_ids:
+                w = cw.get(champion_id, 0)
+                l = cl.get(champion_id, 0)
+                t = self.winrate_global(tier, position, champion_id)
+                results.append(SummonerChampion(self.api, position, champion_id, t, w, l))
+        return sorted(results, key=operator.attrgetter('winrate_expected'), reverse=True)
+
+    def winrate_global(self, tier, position, champion_id):
+        """Return the global winrate the given tier-position-champion combination."""
+        w = self.wins.get(tier, {}).get(position, {}).get(champion_id, 0)
+        l = self.losses.get(tier, {}).get(position, {}).get(champion_id, 0)
+        k = max(1000 - w - l, 0) # smooth over N matches
+        return float((k * 0.5) + w) / (k + w + l) # assume midpoint winrate of 50%
+
+
+class SummonerChampion:
+    placeholder = False
+
+    def __init__(self, api, position, champion_id, twr, w, l):
+        self.position = position
+        self.champion_id = champion_id
+        self.champion_image = api.champion_image(champion_id)
+        self.champion_name = api.champion_name(champion_id)
+        if (w + l) > 0:
+            self.winrate_summoner = w / float(w + l)
+        else:
+            self.winrate_summoner = None
+        self.winrate_tier = twr
+        k = max(10 - w - l, 0) # smoothing factor, how quickly or slowly expected winrate moves
+        self.winrate_expected = ((k * twr) + w) / (k + w + l)
+        self.wins = w
+        self.losses = l
+        self.sessions = w + l
+
+
+class Placeholder(SummonerChampion):
+    placeholder = True
+
+    def __init__(self, position):
+        self.position = position
 
 
 class MatchCollectorThread(threading.Thread):
