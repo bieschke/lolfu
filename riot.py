@@ -10,11 +10,14 @@ https://developer.riotgames.com/api/methods
 
 import configparser
 import functools
+import operator
 import os
 import os.path
 import requests
 import sys
+import threading
 import time
+import queue
 
 CURRENT_SEASON = 'SEASON2015'
 CURRENT_VERSION = '5.13'
@@ -149,19 +152,69 @@ class RiotAPI:
         """Return the requested match."""
         return self.call('/api/lol/na/v2.2/match/%d' % int(match_id))
 
-    def matchhistory(self, summoner_id):
+    def matchhistory(self, summoner_id, multithread=False):
         """Return the summoner's ranked 5s match history."""
-        begin_index = 0
         step = 15 # maximum allowable through Riot API
-        while True:
-            # walk through summoner's match history STEP matches at a time
-            end_index = begin_index + step
-            matches = self.call('/api/lol/na/v2.2/matchhistory/%s' % summoner_id,
-                rankedQueues='RANKED_SOLO_5x5', begindIndex=begin_index, endIndex=end_index).get('matches', [])
-            if not matches:
-                break
-            yield from matches
-            begin_index += step
+
+        if not multithread:
+
+            begin_index = 0
+            while True:
+                # walk through summoner's match history STEP matches at a time
+                end_index = begin_index + step
+                matches = self.call('/api/lol/na/v2.2/matchhistory/%s' % summoner_id,
+                    rankedQueues='RANKED_SOLO_5x5', begindIndex=begin_index, endIndex=end_index).get('matches', [])
+                if not matches:
+                    break
+                yield from matches
+                begin_index += step
+
+        else:
+
+            matches = []
+            n_threads = 10 # how many threads to use
+
+            class WorkerThread(threading.Thread):
+                def __init__(self, api):
+                    threading.Thread.__init__(self, daemon=True)
+                    self.api = api
+                    self.empty = False
+                def run(self):
+                    while True:
+                        begin_index = q.get()
+                        end_index = begin_index + step
+                        chunk = self.api.call('/api/lol/na/v2.2/matchhistory/%s' % summoner_id,
+                            rankedQueues='RANKED_SOLO_5x5', begindIndex=begin_index, endIndex=end_index).get('matches', [])
+                        if not chunk:
+                            self.empty = True
+                        matches.extend(chunk)
+                        q.task_done()
+
+            # LOL API is high latency, use many threads to parallelize
+            q = queue.Queue()
+            threads = []
+            for i in range(n_threads):
+                threads.append(WorkerThread(self))
+                threads[-1].start()
+
+            abort = False
+            begin_index = 0
+            while not abort:
+                # delegate a different offset to each thread
+                for i in range(n_threads):
+                    q.put(begin_index)
+                    begin_index += step
+
+                # wait for all threads to finish
+                q.join()
+
+                # stop pulling matches when we reach the end
+                for thread in threads:
+                    if thread.empty:
+                        abort = True
+
+            # reorder matches to be most recent first
+            yield from sorted(matches, key=operator.itemgetter('matchCreation'), reverse=True)
 
     @functools.lru_cache()
     def summoner_by_name(self, name):

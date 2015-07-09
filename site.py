@@ -41,7 +41,7 @@ class Lolfu:
         self.losses = {}
         self.known_match_ids = set()
         self.known_summoner_ids = set()
-        #self.background_match_collection()
+        self.background_match_collection()
 
     def background_match_collection(self):
         """Launch daemon threads to collect match data."""
@@ -110,8 +110,8 @@ class Lolfu:
         PrintThread(match_print_queue, open(MATCH_FILE, 'a')).start()
 
         # fire up worker threads to actually perform roundtrips to the LOL API
-        match_summoner_queue = queue.Queue()
-        for i in range(100):
+        match_summoner_queue = queue.LifoQueue()
+        for i in range(10):
             MatchCollectorThread(self.api, match_summoner_queue, match_print_queue, self.known_summoner_ids, self.known_match_ids, self.wins, self.losses).start()
 
         # kickstart worker threads with known summoner ids
@@ -161,7 +161,7 @@ class Lolfu:
         # process each match
         wins = {}
         losses = {}
-        for match in self.api.matchhistory(summoner_id):
+        for match in self.api.matchhistory(summoner_id, multithread=True):
             match_id = match['matchId']
             if match['season'] != riot.CURRENT_SEASON:
                 break
