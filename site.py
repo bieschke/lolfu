@@ -37,18 +37,16 @@ class Lolfu:
 
     def __init__(self):
         self.api = riot.RiotAPI()
-        self.background_match_collection()
+        self.wins = {}
+        self.losses = {}
+        self.known_match_ids = set()
+        self.known_summoner_ids = set()
+        #self.background_match_collection()
 
     def background_match_collection(self):
         """Launch daemon threads to collect match data."""
 
-        # win and session counts to be accumulated
-        self.wins = {}
-        self.losses = {}
-
         # accumulate all of the ids for which we have already collected data
-        self.known_match_ids = set()
-        self.known_summoner_ids = set()
         with open(MATCH_FILE, 'r') as f:
             for line in f:
                 row = line.strip().split(',')
@@ -159,48 +157,35 @@ class Lolfu:
 
     def summoner_perfomance(self, summoner_id, tier):
         """Return a summary of how a summoner performs on all champions."""
+
+        # process each match
         wins = {}
         losses = {}
-
-        abort = False
-        begin_index = 0
-        step = 15 # maximum allowable through Riot API
-        while not abort:
-
-            # walk through summoner's match history STEP matches at a time
-            end_index = begin_index + step
-            matches = self.api.matchhistory(summoner_id, begin_index, end_index).get('matches', [])
-            if not matches:
+        for match in self.api.matchhistory(summoner_id):
+            match_id = match['matchId']
+            if match['season'] != riot.CURRENT_SEASON:
                 break
-            begin_index += step
 
-            # process each match
-            for match in matches:
-                match_id = match['matchId']
-                if match['season'] != riot.CURRENT_SEASON:
-                    abort = True
-                    break
+            if len(match['participants']) != 1:
+                raise ValueError('Expected exactly one participant')
+            participant = match['participants'][0]
 
-                if len(match['participants']) != 1:
-                    raise ValueError('Expected exactly one participant')
-                participant = match['participants'][0]
+            champion_id = participant['championId']
+            timeline = participant['timeline']
+            lane = timeline['lane']
+            role = timeline['role']
+            victory = participant['stats']['winner']
 
-                champion_id = participant['championId']
-                timeline = participant['timeline']
-                lane = timeline['lane']
-                role = timeline['role']
-                victory = participant['stats']['winner']
+            position = riot.position(lane, role, champion_id)
+            if position is None:
+                continue # skip matches where we can't determine position
 
-                position = riot.position(lane, role, champion_id)
-                if position is None:
-                    continue # skip matches where we can't determine position
-
-                if victory:
-                    wins.setdefault(position, {}).setdefault(champion_id, 0)
-                    wins[position][champion_id] += 1
-                else:
-                    losses.setdefault(position, {}).setdefault(champion_id, 0)
-                    losses[position][champion_id] += 1
+            if victory:
+                wins.setdefault(position, {}).setdefault(champion_id, 0)
+                wins[position][champion_id] += 1
+            else:
+                losses.setdefault(position, {}).setdefault(champion_id, 0)
+                losses[position][champion_id] += 1
 
         # assemble results sorted by expected winrate
         results = []
@@ -271,87 +256,74 @@ class MatchCollectorThread(threading.Thread):
             self.summoner_queue.task_done()
 
     def work(self, summoner_id):
-        abort = False
-        begin_index = 0
-        step = 15 # maximum allowable through Riot API
-        while not abort:
-            abort = False
 
-            # walk through summoner's match history STEP matches at a time
-            end_index = begin_index + step
-            matches = self.api.matchhistory(summoner_id, begin_index, end_index).get('matches', [])
-            if not matches:
+        for match in self.api.matchhistory(summoner_id):
+
+            match_id = match['matchId']
+            if match_id in self.known_match_ids:
+                continue # skip already observed matches
+            self.known_match_ids.add(match_id)
+
+            match_version = match['matchVersion']
+            if not match_version.startswith(riot.CURRENT_VERSION):
                 break
-            begin_index += step
 
-            for match in matches:
+            # the matchhistory endpoint does not include information in all
+            # participants within the match, to receive those we issue a second
+            # call to the match endpoint.
+            try:
+                match = self.api.match(match_id)
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 404:
+                    continue # skip matches that do not exist
+                raise
 
-                match_id = match['matchId']
-                if match_id in self.known_match_ids:
-                    continue # skip already observed matches
-                self.known_match_ids.add(match_id)
+            # create a mapping of participant ids to summoner ids
+            summoner_ids = {}
+            for identity in match['participantIdentities']:
+                participant_id = identity['participantId']
+                summoner_id = identity['player']['summonerId']
+                summoner_ids[participant_id] = summoner_id
 
-                match_version = match['matchVersion']
-                if not match_version.startswith(riot.CURRENT_VERSION):
-                    abort = True
-                    break
+            # create a mapping of summoner ids to tier and divisions
+            tier_divisions = self.api.tiers_divisions(summoner_ids.values())
 
-                # the matchhistory endpoint does not include information in all
-                # participants within the match, to receive those we issue a second
-                # call to the match endpoint.
-                try:
-                    match = self.api.match(match_id)
-                except requests.exceptions.HTTPError as e:
-                    if e.response.status_code == 404:
-                        continue # skip matches that do not exist
-                    raise
+            # collect data for each participant
+            winners = {}
+            losers = {}
+            for participant in match['participants']:
+                participant_id = participant['participantId']
+                summoner_id = summoner_ids[participant_id]
+                champion_id = participant['championId']
+                stats = participant['stats']
+                timeline = participant['timeline']
+                lane = timeline['lane']
+                role = timeline['role']
+                tier = tier_divisions.get(summoner_id, ['?', '?'])[0]
+                position = riot.position(lane, role, champion_id)
+                if stats['winner']:
+                    winners[position] = (summoner_id, champion_id, tier)
+                    if tier != '?' and position is not None:
+                        self.wins.setdefault(tier, {}).setdefault(position, {}).setdefault(champion_id, 0)
+                        self.wins[tier][position][champion_id] += 1
+                else:
+                    losers[position] = (summoner_id, champion_id, tier)
+                    if tier != '?' and position is not None:
+                        self.losses.setdefault(tier, {}).setdefault(position, {}).setdefault(champion_id, 0)
+                        self.losses[tier][position][champion_id] += 1
 
-                # create a mapping of participant ids to summoner ids
-                summoner_ids = {}
-                for identity in match['participantIdentities']:
-                    participant_id = identity['participantId']
-                    summoner_id = identity['player']['summonerId']
-                    summoner_ids[participant_id] = summoner_id
+                # remember any newly discovered summoners in this match
+                if summoner_id not in self.known_summoner_ids:
+                    self.known_summoner_ids.add(summoner_id)
+                    self.summoner_queue.put(summoner_id)
 
-                # create a mapping of summoner ids to tier and divisions
-                tier_divisions = self.api.tiers_divisions(summoner_ids.values())
-
-                # collect data for each participant
-                winners = {}
-                losers = {}
-                for participant in match['participants']:
-                    participant_id = participant['participantId']
-                    summoner_id = summoner_ids[participant_id]
-                    champion_id = participant['championId']
-                    stats = participant['stats']
-                    timeline = participant['timeline']
-                    lane = timeline['lane']
-                    role = timeline['role']
-                    tier = tier_divisions.get(summoner_id, ['?', '?'])[0]
-                    position = riot.position(lane, role, champion_id)
-                    if stats['winner']:
-                        winners[position] = (summoner_id, champion_id, tier)
-                        if tier != '?' and position is not None:
-                            self.wins.setdefault(tier, {}).setdefault(position, {}).setdefault(champion_id, 0)
-                            self.wins[tier][position][champion_id] += 1
-                    else:
-                        losers[position] = (summoner_id, champion_id, tier)
-                        if tier != '?' and position is not None:
-                            self.losses.setdefault(tier, {}).setdefault(position, {}).setdefault(champion_id, 0)
-                            self.losses[tier][position][champion_id] += 1
-
-                    # remember any newly discovered summoners in this match
-                    if summoner_id not in self.known_summoner_ids:
-                        self.known_summoner_ids.add(summoner_id)
-                        self.summoner_queue.put(summoner_id)
-
-                # cheesy CSV formatting
-                output = [match_id, match_version, match['matchCreation']]
-                for participants in (winners, losers):
-                    # align participants ordering with position ordering
-                    for position in riot.POSITIONS:
-                        output.extend(participants.get(position, ['?', '?', '?']))
-                self.print_queue.put(','.join([str(i) for i in output]))
+            # cheesy CSV formatting
+            output = [match_id, match_version, match['matchCreation']]
+            for participants in (winners, losers):
+                # align participants ordering with position ordering
+                for position in riot.POSITIONS:
+                    output.extend(participants.get(position, ['?', '?', '?']))
+            self.print_queue.put(','.join([str(i) for i in output]))
 
 
 class PrintThread(threading.Thread):

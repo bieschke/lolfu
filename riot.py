@@ -81,7 +81,7 @@ class RiotAPI:
             start = time.time()
             response = requests.get(self.base_url + path, params=params)
             end = time.time()
-            #print('[%.0fms] %d %s' % (1000.0 * (end - start), response.status_code, path), file=sys.stderr)
+            print('[%.0fms] %d %s' % (1000.0 * (end - start), response.status_code, path), file=sys.stderr)
 
             # https://developer.riotgames.com/docs/response-codes
             # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
@@ -149,10 +149,19 @@ class RiotAPI:
         """Return the requested match."""
         return self.call('/api/lol/na/v2.2/match/%d' % int(match_id))
 
-    def matchhistory(self, summoner_id, begin_index=0, end_index=15):
+    def matchhistory(self, summoner_id):
         """Return the summoner's ranked 5s match history."""
-        return self.call('/api/lol/na/v2.2/matchhistory/%s' % summoner_id,
-            rankedQueues='RANKED_SOLO_5x5', begindIndex=begin_index, endIndex=end_index)
+        begin_index = 0
+        step = 15 # maximum allowable through Riot API
+        while True:
+            # walk through summoner's match history STEP matches at a time
+            end_index = begin_index + step
+            matches = self.call('/api/lol/na/v2.2/matchhistory/%s' % summoner_id,
+                rankedQueues='RANKED_SOLO_5x5', begindIndex=begin_index, endIndex=end_index).get('matches', [])
+            if not matches:
+                break
+            yield from matches
+            begin_index += step
 
     @functools.lru_cache()
     def summoner_by_name(self, name):
