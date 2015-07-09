@@ -8,6 +8,9 @@ Dependencies:
 <li>CherryPy 3.8.0 - http://www.cherrypy.org</li>
 <li>Mako 1.0.1 - http://www.makotemplates.org</li>
 
+<code>site.py</code> is a CherryPy application that allows one to lookup summoners and see
+what is the winrate optimal champions they should be playing in each role.
+
 <code>riot.py</code> is a simple wrapper around Riot's LOL API. You can either pass your 
 api key directly to it's constructor, or create a <code>riot.cfg</code> file that it'll 
 read from upon instantiation. This wrapper is resilient to temporary downtime on Riot's 
@@ -16,12 +19,7 @@ server failures. When surpassing Riot API rate limits, the wrapper will automati
 respect the Retry-After header and resume querying after the rate limit threshold has 
 passed.
 
-<code>site.py</code> is a CherryPy application that allows one to lookup summoners and see
-what is the winrate optimal champion they should be playing in each role. The implemenation
-here is a simple greedy solution to the multi-armed bandit problem where each champion is
-modeled as an arm.
-
-<code>scripts/collector/match_simple.py</code> walks a starting set of summoners, retrieves
+<code>scripts/match_simple.py</code> walks a starting set of summoners, retrieves
 complete match history for each of those summoners, and then continues to spider the 
 observed summoners from those matches, outputting ARFF data to stdout for all of the
 retrieved matches. This program also accepts optional command line arguments, where
@@ -29,35 +27,8 @@ each argument is a previously collected ARFF file. Supplying the previously crea
 data files allows this program to skip existing matches and only output data for
 previously unobserved matches.
 
-<code>scripts/collector/match_complex.py</code> converts simple match data into a complex
-match ARFF layering in summoner and summoner-champion statistics in addition to the 
-bare bones statistics provided in a simple match.
-
-<code>scripts/collector/match_aggregated.py</code> converts complex match datta into an
-aggregated match ARFF. Whereas a simple match ARFF has only the bare bones of data
-for a given match, and a complex match ARFF has a large number of depthful features,
-an aggregated match ARFF contains only a select number of relevant features that are
-in fact themselves aggregations of multiple other data. For example the KDA feature
-is an aggregate of kills, deaths, and assists data and is included with the aggregated
-match ARFF.
-
-<code>scripts/collector/matchup.py</code> reads a complex match and outputs a matchup ARFF
-derived from that data. Matchup data captures all champion combinations between
-competing teams. This is the core dataset for counterpicking statistics.
-
-<code>scripts/collector/synergy.py</code> reads a complex match and outputs a synergy ARFF
-derived from that data. Synergy data captures all champion combinations possible
-within one team. This is the core dataset for team composition statistics.
-
-<code>scripts/util_arff/reader.py</code> is a command line utility that reads in ARFF via stdin
+<code>scripts/arff_reader.py</code> is a command line utility that reads in ARFF via stdin
 and writes either CSV or JSON-ified dictionaries to stdout. Keys in the JSON output are 
 the ARFF attribute names and values are the ARFF data. Useful for piping ARFF files.
-
-<code>scripts/util/winrate.py</code> is a command line utility that reads in CSV files on
-stdin having the format champion1,champion2,{WIN,LOSS} and output a CSV file
-aggregating by that champion combination in the format champion1,champion2,winrate.
-
-<code>scripts/match_predictor.py</code> is a simple command line program that predicts the
-likelihood of winning the described match.
 
 <i>lolfu isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing League of Legends. League of Legends and Riot Games are trademarks or registered trademarks of Riot Games, Inc. League of Legends © Riot Games, Inc.</i>
