@@ -66,7 +66,7 @@ class Lolfu:
                         loser_support_summoner_id, loser_support_champion_id, loser_support_tier \
                         = row
                 except ValueError:
-                    pass # skip malformed lines
+                    continue # skip malformed lines
 
                 self.known_match_ids.add(int(match_id))
 
@@ -114,7 +114,7 @@ class Lolfu:
         # fire up worker threads to actually perform roundtrips to the LOL API
         match_summoner_queue = queue.Queue()
         for i in range(100):
-            MatchCollectorThread(self.api, match_summoner_queue, match_print_queue, self.known_summoner_ids, self.known_match_ids).start()
+            MatchCollectorThread(self.api, match_summoner_queue, match_print_queue, self.known_summoner_ids, self.known_match_ids, self.wins, self.losses).start()
 
         # kickstart worker threads with known summoner ids
         for summoner_id in self.known_summoner_ids:
@@ -221,7 +221,7 @@ class Lolfu:
         """Return the global winrate the given tier-position-champion combination."""
         w = self.wins.get(tier, {}).get(position, {}).get(champion_id, 0)
         l = self.losses.get(tier, {}).get(position, {}).get(champion_id, 0)
-        k = max(1000 - w - l, 0) # smooth over N matches
+        k = max(1000 - w - l, 0) # smooth over 1000 matches
         return float((k * 0.5) + w) / (k + w + l) # assume midpoint winrate of 50%
 
 
@@ -238,7 +238,7 @@ class SummonerChampion:
         else:
             self.winrate_summoner = None
         self.winrate_tier = twr
-        k = max(10 - w - l, 0) # smoothing factor, how quickly or slowly expected winrate moves
+        k = max(10 - w - l, 0) # smooth over 10 matches
         self.winrate_expected = ((k * twr) + w) / (k + w + l)
         self.wins = w
         self.losses = l
@@ -254,13 +254,15 @@ class Placeholder(SummonerChampion):
 
 class MatchCollectorThread(threading.Thread):
 
-    def __init__(self, api, summoner_queue, print_queue, known_summoner_ids, known_match_ids):
+    def __init__(self, api, summoner_queue, print_queue, known_summoner_ids, known_match_ids, wins, losses):
         threading.Thread.__init__(self, daemon=True)
         self.api = api
         self.summoner_queue = summoner_queue
         self.print_queue = print_queue
         self.known_summoner_ids = known_summoner_ids
         self.known_match_ids = known_match_ids
+        self.wins = wins
+        self.losses = losses
 
     def run(self):
         while True:
@@ -329,8 +331,14 @@ class MatchCollectorThread(threading.Thread):
                     position = riot.position(lane, role, champion_id)
                     if stats['winner']:
                         winners[position] = (summoner_id, champion_id, tier)
+                        if tier != '?' and position is not None:
+                            self.wins.setdefault(tier, {}).setdefault(position, {}).setdefault(champion_id, 0)
+                            self.wins[tier][position][champion_id] += 1
                     else:
                         losers[position] = (summoner_id, champion_id, tier)
+                        if tier != '?' and position is not None:
+                            self.losses.setdefault(tier, {}).setdefault(position, {}).setdefault(champion_id, 0)
+                            self.losses[tier][position][champion_id] += 1
 
                     # remember any newly discovered summoners in this match
                     if summoner_id not in self.known_summoner_ids:
