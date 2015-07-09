@@ -18,7 +18,7 @@ import sys
 import time
 
 CURRENT_SEASON = 'SEASON2015'
-CURRENT_VERSION = '5.12'
+CURRENT_VERSION = '5.13'
 
 # Riot's lanes
 RIOT_TOP = 'TOP'
@@ -45,10 +45,6 @@ POSITIONS = (TOP, JUNGLE, MID, ADC, SUPPORT)
 
 CHAMPION_OVERALL = 0 # magic id used to indicate all champions for a summoner
 
-RIOT_CHAMPION_IDS = '{62,24,35,19,76,143,63,33,42,201,34,23,21,53,83,101,15,92,61,41,54,78,30,126,20,48,113,104,25,150,99,102,58,114,222,429,105,38,37,39,112,69,57,412,10,120,121,2,115,134,36,43,1,84,89,157,85,107,13,98,154,80,50,432,14,67,75,4,31,77,236,106,51,122,56,26,268,68,72,17,6,32,3,74,22,161,27,110,29,86,131,11,60,12,55,245,82,96,266,119,9,91,5,64,44,90,127,18,421,8,59,267,16,45,40,111,28,79,238,254,117,103,133,7,81}'
-
-RIOT_CHAMPION_KEYS = '{MonkeyKing,Jax,Shaco,Warwick,Nidalee,Zyra,Brand,Rammus,Corki,Braum,Anivia,Tryndamere,MissFortune,Blitzcrank,Yorick,Xerath,Sivir,Riven,Orianna,Gangplank,Malphite,Poppy,Karthus,Jayce,Nunu,Trundle,Sejuani,Graves,Morgana,Gnar,Lux,Shyvana,Renekton,Fiora,Jinx,Kalista,Fizz,Kassadin,Sona,Irelia,Viktor,Cassiopeia,Maokai,Thresh,Kayle,Hecarim,Khazix,Olaf,Ziggs,Syndra,DrMundo,Karma,Annie,Akali,Leona,Yasuo,Kennen,Rengar,Ryze,Shen,Zac,Pantheon,Swain,Bard,Sion,Vayne,Nasus,TwistedFate,Chogath,Udyr,Lucian,Volibear,Caitlyn,Darius,Nocturne,Zilean,Azir,Rumble,Skarner,Teemo,Urgot,Amumu,Galio,Heimerdinger,Ashe,Velkoz,Singed,Varus,Twitch,Garen,Diana,MasterYi,Elise,Alistar,Katarina,Ekko,Mordekaiser,KogMaw,Aatrox,Draven,FiddleSticks,Talon,XinZhao,LeeSin,Taric,Malzahar,Lissandra,Tristana,RekSai,Vladimir,JarvanIV,Nami,Soraka,Veigar,Janna,Nautilus,Evelynn,Gragas,Zed,Vi,Lulu,Ahri,Quinn,Leblanc,Ezreal}'
-
 
 def position(lane, role, champion_id):
     """Return the position for the given lane and role."""
@@ -65,7 +61,7 @@ def position(lane, role, champion_id):
     return None
 
 
-class RiotAPI(object):
+class RiotAPI:
 
     base_url = 'https://na.api.pvp.net'
     last_call = time.time()
@@ -100,7 +96,7 @@ class RiotAPI(object):
             start = time.time()
             response = requests.get(self.base_url + path, params=params)
             end = time.time()
-            print('[%.0fms] %d %s' % (1000.0 * (end - start), response.status_code, path), file=sys.stderr)
+            #print('[%.0fms] %d %s' % (1000.0 * (end - start), response.status_code, path), file=sys.stderr)
 
             # https://developer.riotgames.com/docs/response-codes
             # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
@@ -257,7 +253,7 @@ class RiotAPI(object):
         return sorted(results, key=operator.attrgetter('winrate_expected'), reverse=True)
 
 
-class SummonerChampion(object):
+class SummonerChampion:
     placeholder = False
 
     def __init__(self, api, p, champion_id, twr, w, l):
