@@ -1,11 +1,11 @@
 <%inherit file="base.html"/>
 
-<%block name="title">${summoner}</%block>
+<%block name="title">${summoner.name}</%block>
 
 <%include file="navbar.html"/>
 
 <div class="page-header">
-    <h1 class="text-center">${summoner} <small>${tier} ${division}</small></h1>
+    <h1 class="text-center">${summoner.name} <small>${summoner.tier} ${summoner.division}</small></h1>
 </div>
 
 % if climb_recs:
@@ -57,7 +57,7 @@
             </div>
             % else:
             <h2><small>${rec.position.capitalize()}</small></h2>
-            <p class="lead">${summoner} has no dominant ${rec.position.lower()} champion.</p>
+            <p class="lead">${summoner.name} has no dominant ${rec.position.lower()} champion.</p>
             <p class="lead">More matches played on ${rec.position.lower()} champions will help find one.</p>
             % endif
         </div>

@@ -88,7 +88,10 @@ class RiotAPI:
 
             # https://developer.riotgames.com/docs/response-codes
             # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
-            if response.status_code == 429:
+            if response.status_code == 404:
+                # API returns 404 when the requested entity doesn't exist
+                return None
+            elif response.status_code == 429:
                 # retry after we're within our rate limit
                 time.sleep(float(response.headers['Retry-After']) + 1)
                 continue
@@ -105,46 +108,35 @@ class RiotAPI:
     @functools.lru_cache()
     def champion_image(self, champion_id):
         """Return the image filename for the given champion."""
-        if champion_id == 223:
-            return "TahmKench.png" # FIXME
-        for champion in self.champions()['data'].values():
-            if champion_id == champion['id']:
-                return champion['image']['full']
-        return None
+        return self.champions()['data'][str(champion_id)]['image']['full']
 
     @functools.lru_cache()
     def champion_name(self, champion_id):
         """Return the name of the champion associated with the given champion ID."""
-        if champion_id == 223:
-            return 'Tahm Kench' # FIXME
-        return self.call('/api/lol/static-data/na/v1.2/champion/%d' % int(champion_id))['name']
+        return self.champions()['data'][str(champion_id)]['name']
 
     @functools.lru_cache()
     def champions(self):
         """Return all champions."""
-        return self.call('/api/lol/static-data/na/v1.2/champion', champData='image')
+        return self.call('/api/lol/static-data/na/v1.2/champion', champData='image', dataById='true')
 
     @functools.lru_cache()
     def tier_division(self, summoner_id):
         """Return the (tier, division) of the given summoner."""
-        try:
-            return self.tiers_divisions([summoner_id])[summoner_id]
-        except requests.exceptions.HTTPError as e:
-            if e.response.status_code == 404:
-                return None, None
-            raise
+        return self.tiers_divisions([summoner_id]).get(summoner_id, (None, None))
 
     def tiers_divisions(self, summoner_ids):
         """Return the (tier, division) for the given summoners keyed by summoner_id."""
+        result = {}
         string_ids = [str(summoner_id) for summoner_id in summoner_ids]
         response = self.call('/api/lol/na/v2.5/league/by-summoner/%s/entry' % ','.join(string_ids))
-        result = {}
-        for summoner_id, string_id in zip(summoner_ids, string_ids):
-            for league in response.get(string_id, []):
-                if league['queue'] == 'RANKED_SOLO_5x5':
-                    for entry in league['entries']:
-                        if entry['playerOrTeamId'] == string_id:
-                            result[summoner_id] = (league['tier'].capitalize(), entry['division'])
+        if response:
+            for summoner_id, string_id in zip(summoner_ids, string_ids):
+                for league in response.get(string_id, []):
+                    if league['queue'] == 'RANKED_SOLO_5x5':
+                        for entry in league['entries']:
+                            if entry['playerOrTeamId'] == string_id:
+                                result[summoner_id] = (league['tier'].capitalize(), entry['division'])
         return result
 
     @functools.lru_cache()
@@ -184,10 +176,11 @@ class RiotAPI:
                         begin_index = q.get()
                         end_index = begin_index + step
                         chunk = self.api.call('/api/lol/na/v2.2/matchhistory/%s' % summoner_id,
-                            rankedQueues='RANKED_SOLO_5x5', begindIndex=begin_index, endIndex=end_index).get('matches', [])
+                            rankedQueues='RANKED_SOLO_5x5', begindIndex=begin_index, endIndex=end_index)
                         if not chunk:
                             self.empty = True
-                        matches.extend(chunk)
+                        else:
+                            matches.extend(chunk['matches'])
                         q.task_done()
 
             # LOL API is high latency, use many threads to parallelize
@@ -219,19 +212,20 @@ class RiotAPI:
     @functools.lru_cache()
     def summoner_by_name(self, name):
         """Return the summoner having the given name."""
-        for summoner in self.call('/api/lol/na/v1.4/summoner/by-name/%s' % name).values():
-            return summoner['id'], summoner['name']
-        return None, None
-
-    @functools.lru_cache()
-    def summoner_stats(self, summoner_id):
-        """Return statistics for the given summoner."""
-        return self.call('/api/lol/na/v1.3/stats/by-summoner/%d/ranked' % int(summoner_id))
-
-    @functools.lru_cache()
-    def summoner_champion_stats(self, summoner_id, champion_id):
-        """Return stats for the given summoner."""
-        for champion in self.summoner_stats(summoner_id).get('champions', []):
-            if champion_id == champion['id']:
-                return champion['stats']
+        summoner = self.call('/api/lol/na/v1.4/summoner/by-name/%s' % name)
+        if summoner:
+            for dto in summoner.values():
+                summoner_id = dto['id']
+                name = dto['name']
+                tier, division = self.tier_division(summoner_id)
+                return Summoner(summoner_id, name, tier, division)
         return None
+
+
+class Summoner:
+
+    def __init__(self, summoner_id, name, tier, division):
+        self.summoner_id = summoner_id
+        self.name = name
+        self.tier = tier
+        self.division = division

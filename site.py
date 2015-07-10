@@ -115,7 +115,7 @@ class Lolfu:
             MatchCollectorThread(self.api, match_summoner_queue, match_print_queue, self.known_summoner_ids, self.known_match_ids, self.wins, self.losses).start()
 
         # kickstart worker threads with known summoner ids
-        for summoner_id in self.known_summoner_ids:
+        for summoner_id in set(self.known_summoner_ids):
             match_summoner_queue.put(summoner_id)
 
     def html(self, template, **kw):
@@ -144,14 +144,13 @@ class Lolfu:
                     return results
             return []
 
-        summoner_id, summoner = self.api.summoner_by_name(who)
-        tier, division = self.api.tier_division(summoner_id)
-        sc = self.summoner_perfomance(summoner_id, tier)
+        summoner = self.api.summoner_by_name(who)
+        sc = self.summoner_perfomance(summoner.summoner_id, summoner.tier)
         climb_recs = [c for c in sc if c.sessions >= 10 and c.winrate_expected > .5][:5]
         position_recs = one_rec_per_position([c for c in sc if c.sessions >= 10])
         practice_recs = one_rec_per_position([c for c in sc if c.sessions < 10 and c.winrate_expected > .5])
 
-        return self.html('summoner.html', summoner=summoner, tier=tier, division=division,
+        return self.html('summoner.html', summoner=summoner,
             climb_recs=climb_recs, position_recs=position_recs, practice_recs=practice_recs,
             match_count=len(self.known_match_ids), summoner_count=len(self.known_summoner_ids))
 
@@ -271,12 +270,9 @@ class MatchCollectorThread(threading.Thread):
             # the matchhistory endpoint does not include information in all
             # participants within the match, to receive those we issue a second
             # call to the match endpoint.
-            try:
-                match = self.api.match(match_id)
-            except requests.exceptions.HTTPError as e:
-                if e.response.status_code == 404:
-                    continue # skip matches that do not exist
-                raise
+            match = self.api.match(match_id)
+            if not match:
+                continue # skip matches that do not exist
 
             # create a mapping of participant ids to summoner ids
             summoner_ids = {}
@@ -287,6 +283,8 @@ class MatchCollectorThread(threading.Thread):
 
             # create a mapping of summoner ids to tier and divisions
             tier_divisions = self.api.tiers_divisions(summoner_ids.values())
+            if not tier_divisions:
+                tier_divisions = {}
 
             # collect data for each participant
             winners = {}
