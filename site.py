@@ -40,11 +40,18 @@ class Lolfu:
         self.wins = {}
         self.losses = {}
         self.known_match_ids = set()
-        self.known_summoner_ids = set()
         self.background_match_collection()
 
     def background_match_collection(self):
         """Launch daemon threads to collect match data."""
+
+        # establish shared MATCH_FILE printing queue
+        print_queue = queue.Queue()
+
+        # worker threads to actually perform roundtrips to the LOL API
+        summoner_queue = queue.Queue(maxsize=10000)
+        for i in range(10):
+            MatchCollectorThread(self.api, summoner_queue, print_queue, self.known_match_ids, self.wins, self.losses).start()
 
         # accumulate all of the ids for which we have already collected data
         with open(MATCH_FILE, 'r') as f:
@@ -83,7 +90,10 @@ class Lolfu:
                         loser_adc_summoner_id,
                         loser_support_summoner_id,
                         ):
-                    self.known_summoner_ids.add(int(summoner_id))
+                    try:
+                        summoner_queue.put_nowait(int(summoner_id))
+                    except queue.Full:
+                        pass
 
                 for (champion_id, tier), position in zip((
                         (winner_top_champion_id, winner_top_tier),
@@ -105,18 +115,8 @@ class Lolfu:
                     self.losses.setdefault(tier, {}).setdefault(position, {}).setdefault(int(champion_id), 0)
                     self.losses[tier][position][int(champion_id)] += 1
 
-        # establish thread for shared printing
-        match_print_queue = queue.Queue()
-        PrintThread(match_print_queue, open(MATCH_FILE, 'a')).start()
-
-        # fire up worker threads to actually perform roundtrips to the LOL API
-        match_summoner_queue = queue.LifoQueue()
-        for i in range(10):
-            MatchCollectorThread(self.api, match_summoner_queue, match_print_queue, self.known_summoner_ids, self.known_match_ids, self.wins, self.losses).start()
-
-        # kickstart worker threads with known summoner ids
-        for summoner_id in set(self.known_summoner_ids):
-            match_summoner_queue.put(summoner_id)
+        # don't start writing to the MATCH_FILE until we've read it
+        PrintThread(print_queue, open(MATCH_FILE, 'a')).start()
 
     def html(self, template, **kw):
         return lookup.get_template(template).render_unicode(**kw).encode('utf-8', 'replace')
@@ -124,7 +124,7 @@ class Lolfu:
     @cherrypy.expose
     def index(self):
         """Return the homepage."""
-        return self.html('index.html', match_count=len(self.known_match_ids), summoner_count=len(self.known_summoner_ids))
+        return self.html('index.html', match_count=len(self.known_match_ids))
 
     @cherrypy.expose
     def summoner(self, who):
@@ -150,9 +150,8 @@ class Lolfu:
         position_recs = one_rec_per_position([c for c in sc if c.sessions >= 10])
         practice_recs = one_rec_per_position([c for c in sc if c.sessions < 10 and c.winrate_expected > .5])
 
-        return self.html('summoner.html', summoner=summoner,
-            climb_recs=climb_recs, position_recs=position_recs, practice_recs=practice_recs,
-            match_count=len(self.known_match_ids), summoner_count=len(self.known_summoner_ids))
+        return self.html('summoner.html', summoner=summoner, match_count=len(self.known_match_ids),
+            climb_recs=climb_recs, position_recs=position_recs, practice_recs=practice_recs)
 
     def summoner_perfomance(self, summoner_id, tier):
         """Return a summary of how a summoner performs on all champions."""
@@ -238,12 +237,11 @@ class Placeholder(SummonerChampion):
 
 class MatchCollectorThread(threading.Thread):
 
-    def __init__(self, api, summoner_queue, print_queue, known_summoner_ids, known_match_ids, wins, losses):
+    def __init__(self, api, summoner_queue, print_queue, known_match_ids, wins, losses):
         threading.Thread.__init__(self, daemon=True)
         self.api = api
         self.summoner_queue = summoner_queue
         self.print_queue = print_queue
-        self.known_summoner_ids = known_summoner_ids
         self.known_match_ids = known_match_ids
         self.wins = wins
         self.losses = losses
@@ -310,10 +308,11 @@ class MatchCollectorThread(threading.Thread):
                         self.losses.setdefault(tier, {}).setdefault(position, {}).setdefault(champion_id, 0)
                         self.losses[tier][position][champion_id] += 1
 
-                # remember any newly discovered summoners in this match
-                if summoner_id not in self.known_summoner_ids:
-                    self.known_summoner_ids.add(summoner_id)
-                    self.summoner_queue.put(summoner_id)
+                # remember summoners from this match
+                try:
+                    self.summoner_queue.put_nowait(summoner_id)
+                except queue.Full:
+                    pass
 
             # cheesy CSV formatting
             output = [match_id, match_version, match['matchCreation']]
