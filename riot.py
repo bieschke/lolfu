@@ -8,6 +8,7 @@ Developer API documentation can be found here:
 https://developer.riotgames.com/api/methods
 """
 
+import cherrypy
 import configparser
 import functools
 import operator
