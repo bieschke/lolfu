@@ -90,6 +90,7 @@ class Lolfu:
                         loser_adc_summoner_id,
                         loser_support_summoner_id,
                         ):
+                    #break # FIXME
                     try:
                         summoner_queue.put_nowait(int(summoner_id))
                     except queue.Full:
@@ -347,12 +348,18 @@ if __name__ == '__main__':
         help='What hostname should we listen on?')
     parser.add_argument('--port', metavar='PORT', type=int, default=8080,
         help='What port should we listen on?')
+    parser.add_argument('--access-log', default=None,
+        help='What file should we write access logs to?')
+    parser.add_argument('--error-log', default=None,
+        help='What file should we write error logs to?')
     args = parser.parse_args()
 
     # global cherrypy configuration
     global_cfg = {
         'server.socket_host': args.host,
         'server.socket_port': args.port,
+        'log.access_file': args.access_log,
+        'log.error_file': args.error_log,
     }
     if args.production:
         global_cfg['environment'] = 'production'
