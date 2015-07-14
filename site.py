@@ -90,7 +90,7 @@ class Lolfu:
                         loser_adc_summoner_id,
                         loser_support_summoner_id,
                         ):
-                    #break # FIXME
+                    break # FIXME
                     try:
                         summoner_queue.put_nowait(int(summoner_id))
                     except queue.Full:
@@ -125,7 +125,7 @@ class Lolfu:
     @cherrypy.expose
     def index(self):
         """Return the homepage."""
-        return self.html('index.html', match_count=len(self.known_match_ids))
+        return self.html('index.html', match_count=len(self.known_match_ids), version=riot.CURRENT_VERSION)
 
     @cherrypy.expose
     def summoner(self, who):
@@ -151,7 +151,8 @@ class Lolfu:
         position_recs = one_rec_per_position([c for c in sc if c.sessions >= 10])
         practice_recs = one_rec_per_position([c for c in sc if c.sessions < 10 and c.winrate_expected > .5])
 
-        return self.html('summoner.html', summoner=summoner, match_count=len(self.known_match_ids),
+        return self.html('summoner.html', summoner=summoner,
+            match_count=len(self.known_match_ids), version=riot.CURRENT_VERSION,
             climb_recs=climb_recs, position_recs=position_recs, practice_recs=practice_recs)
 
     def summoner_perfomance(self, summoner_id, tier):
@@ -161,7 +162,7 @@ class Lolfu:
         wins = {}
         losses = {}
         for match in self.api.matchhistory(summoner_id, multithread=True):
-            match_id = match['matchId']
+            match_id = int(match['matchId'])
             if match['season'] != riot.CURRENT_SEASON:
                 break
 
@@ -169,7 +170,7 @@ class Lolfu:
                 raise ValueError('Expected exactly one participant')
             participant = match['participants'][0]
 
-            champion_id = participant['championId']
+            champion_id = int(participant['championId'])
             timeline = participant['timeline']
             lane = timeline['lane']
             role = timeline['role']
@@ -257,7 +258,7 @@ class MatchCollectorThread(threading.Thread):
 
         for match in self.api.matchhistory(summoner_id):
 
-            match_id = match['matchId']
+            match_id = int(match['matchId'])
             if match_id in self.known_match_ids:
                 continue # skip already observed matches
             self.known_match_ids.add(match_id)
@@ -277,7 +278,7 @@ class MatchCollectorThread(threading.Thread):
             summoner_ids = {}
             for identity in match['participantIdentities']:
                 participant_id = identity['participantId']
-                summoner_id = identity['player']['summonerId']
+                summoner_id = int(identity['player']['summonerId'])
                 summoner_ids[participant_id] = summoner_id
 
             # create a mapping of summoner ids to tier and divisions
@@ -290,13 +291,13 @@ class MatchCollectorThread(threading.Thread):
             losers = {}
             for participant in match['participants']:
                 participant_id = participant['participantId']
-                summoner_id = summoner_ids[participant_id]
-                champion_id = participant['championId']
+                summoner_id = int(summoner_ids[participant_id])
+                champion_id = int(participant['championId'])
                 stats = participant['stats']
                 timeline = participant['timeline']
                 lane = timeline['lane']
                 role = timeline['role']
-                tier = tier_divisions.get(summoner_id, ['?', '?'])[0]
+                tier = tier_divisions.get(summoner_id, ('?', '?'))[0]
                 position = riot.position(lane, role, champion_id)
                 if stats['winner']:
                     winners[position] = (summoner_id, champion_id, tier)
@@ -320,7 +321,7 @@ class MatchCollectorThread(threading.Thread):
             for participants in (winners, losers):
                 # align participants ordering with position ordering
                 for position in riot.POSITIONS:
-                    output.extend(participants.get(position, ['?', '?', '?']))
+                    output.extend(participants.get(position, ('?', '?', '?')))
             self.print_queue.put(','.join([str(i) for i in output]))
 
 
