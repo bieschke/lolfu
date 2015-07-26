@@ -11,6 +11,7 @@ https://developer.riotgames.com/api/methods
 import cherrypy
 import configparser
 import functools
+import json
 import operator
 import os
 import os.path
@@ -21,7 +22,9 @@ import time
 import queue
 
 CURRENT_SEASON = 'SEASON2015'
-CURRENT_VERSION = '5.13'
+CURRENT_VERSION = '5.14'
+
+SOLOQUEUE = 'RANKED_SOLO_5x5'
 
 # Riot's lanes
 RIOT_TOP = 'TOP'
@@ -67,19 +70,24 @@ class RiotAPI:
     base_url = 'https://na.api.pvp.net'
     last_call = time.time()
 
-    def __init__(self, **kw):
-        """Read configuration options from riot.cfg if they are not specified
-        explicitly as a keyword argument in this constructor.
-        """
+    def __init__(self, cache_dir):
         cfg = configparser.SafeConfigParser()
         cfg.read(os.path.dirname(os.path.abspath(__file__)) + os.sep + 'riot.cfg')
-        self.api_key = cfg.get('riot', 'api_key', vars=kw)
+        self.api_key = cfg.get('riot', 'api_key')
+        self.cache_dir = cache_dir
 
-    def call(self, path, **params):
+    def call(self, path, cache_to_file=False, **params):
         """Execute a remote API call and return the JSON results."""
         params['api_key'] = self.api_key
 
-        retry_seconds = 60
+        if cache_to_file:
+            try:
+                with open(cache_to_file, 'r') as f:
+                    return json.load(f)
+            except OSError:
+                pass # cache file does not exist
+
+        retry_seconds = 1
         while True:
 
             start = time.time()
@@ -94,7 +102,8 @@ class RiotAPI:
                 return None
             elif response.status_code == 429:
                 # retry after we're within our rate limit
-                time.sleep(float(response.headers['Retry-After']) + 1)
+                time.sleep(float(response.headers.get('Retry-After', retry_seconds)))
+                retry_seconds *= 2
                 continue
             elif response.status_code in (500, 502, 503, 504):
                 # retry when the Riot API is having (hopefully temporary) difficulties
@@ -104,111 +113,39 @@ class RiotAPI:
             response.raise_for_status()
             break
 
-        return response.json()
+        result = response.json()
 
-    @functools.lru_cache()
+        if cache_to_file:
+            os.makedirs(os.path.dirname(cache_to_file), exist_ok=True)
+            with open(cache_to_file, 'x') as f:
+                json.dump(result, f)
+
+        return result
+
     def champion_image(self, champion_id):
         """Return the image filename for the given champion."""
         return self.champions()['data'][str(champion_id)]['image']['full']
 
-    @functools.lru_cache()
     def champion_name(self, champion_id):
         """Return the name of the champion associated with the given champion ID."""
         return self.champions()['data'][str(champion_id)]['name']
 
-    @functools.lru_cache()
+    @functools.lru_cache(1)
     def champions(self):
         """Return all champions."""
         return self.call('/api/lol/static-data/na/v1.2/champion', champData='image', dataById='true')
 
     @functools.lru_cache()
-    def tier_division(self, summoner_id):
-        """Return the (tier, division) of the given summoner."""
-        return self.tiers_divisions([summoner_id]).get(summoner_id, (None, None))
-
-    def tiers_divisions(self, summoner_ids):
-        """Return the (tier, division) for the given summoners keyed by summoner_id."""
-        result = {}
-        string_ids = [str(summoner_id) for summoner_id in summoner_ids]
-        response = self.call('/api/lol/na/v2.5/league/by-summoner/%s/entry' % ','.join(string_ids))
-        if response:
-            for summoner_id, string_id in zip(summoner_ids, string_ids):
-                for league in response.get(string_id, []):
-                    if league['queue'] == 'RANKED_SOLO_5x5':
-                        for entry in league['entries']:
-                            if entry['playerOrTeamId'] == string_id:
-                                result[summoner_id] = (league['tier'].capitalize(), entry['division'])
-        return result
-
-    @functools.lru_cache()
     def match(self, match_id):
         """Return the requested match."""
-        return self.call('/api/lol/na/v2.2/match/%d' % int(match_id))
+        cache_file = os.path.join(self.cache_dir, 'match',
+            str(match_id)[-1], str(match_id)[-2], str(match_id)[-3], '%d.dat' % match_id)
+        return self.call('/api/lol/na/v2.2/match/%d' % match_id, cache_to_file=cache_file)
 
-    def matchhistory(self, summoner_id, multithread=False):
-        """Return the summoner's ranked 5s match history."""
-        step = 15 # maximum allowable through Riot API
-
-        if not multithread:
-
-            begin_index = 0
-            while True:
-                # walk through summoner's match history STEP matches at a time
-                end_index = begin_index + step
-                matches = self.call('/api/lol/na/v2.2/matchhistory/%s' % summoner_id,
-                    rankedQueues='RANKED_SOLO_5x5', begindIndex=begin_index, endIndex=end_index).get('matches', [])
-                if not matches:
-                    break
-                yield from matches
-                begin_index += step
-
-        else:
-
-            matches = []
-            n_threads = 10 # how many threads to use
-
-            class WorkerThread(threading.Thread):
-                def __init__(self, api):
-                    threading.Thread.__init__(self, daemon=True)
-                    self.api = api
-                    self.empty = False
-                def run(self):
-                    while True:
-                        begin_index = q.get()
-                        end_index = begin_index + step
-                        chunk = self.api.call('/api/lol/na/v2.2/matchhistory/%s' % summoner_id,
-                            rankedQueues='RANKED_SOLO_5x5', begindIndex=begin_index, endIndex=end_index)
-                        if not chunk:
-                            self.empty = True
-                        else:
-                            matches.extend(chunk['matches'])
-                        q.task_done()
-
-            # LOL API is high latency, use many threads to parallelize
-            q = queue.Queue()
-            threads = []
-            for i in range(n_threads):
-                threads.append(WorkerThread(self))
-                threads[-1].start()
-
-            abort = False
-            begin_index = 0
-            while not abort:
-                # delegate a different offset to each thread
-                for i in range(n_threads):
-                    q.put(begin_index)
-                    begin_index += step
-
-                # wait for all threads to finish
-                q.join()
-
-                # stop pulling matches when we reach the end
-                for thread in threads:
-                    if thread.empty:
-                        abort = True
-
-            # reorder matches to be most recent first
-            yield from sorted(matches, key=operator.itemgetter('matchCreation'), reverse=True)
+    def matchlist(self, summoner_id):
+        """Return the match list for the given summoner."""
+        return self.call('/api/lol/na/v2.2/matchlist/by-summoner/%s' % summoner_id,
+            rankedQueues=SOLOQUEUE, seasons=CURRENT_SEASON).get('matches', [])
 
     @functools.lru_cache()
     def summoner_by_name(self, name):
@@ -218,15 +155,50 @@ class RiotAPI:
             for dto in summoner.values():
                 summoner_id = dto['id']
                 name = dto['name']
-                tier, division = self.tier_division(summoner_id)
-                return Summoner(summoner_id, name, tier, division)
+                tier = self.tier(summoner_id)
+                return Summoner(summoner_id, name, tier)
+        return None
+
+    @functools.lru_cache()
+    def tier(self, summoner_id):
+        """Return the tier of the given summoner."""
+
+        cache_file = os.path.join(self.cache_dir, 'tier',
+            str(summoner_id)[-1], str(summoner_id)[-2], str(summoner_id)[-3], '%d.dat' % summoner_id)
+        response = self.call('/api/lol/na/v2.5/league/by-summoner/%s/entry' % summoner_id, cache_to_file=cache_file)
+
+        if response:
+            for league in response.get(str(summoner_id), []):
+                if league['queue'] == SOLOQUEUE:
+                    return league['tier'].capitalize()
+        return None
+
+    @functools.lru_cache()
+    def victory(self, match_id, summoner_id):
+        """Return true iff the given summoner won the given match.
+        
+        Returns None if the summoner did not play in the given match or if the given match
+        does not exist.
+        """
+        match = self.match(match_id)
+
+        if match:
+
+            # map participants to summoners
+            summoner_ids = {}
+            for pid in match['participantIdentities']:
+                summoner_ids[pid['participantId']] = pid['player']['summonerId']
+
+            for participant in match['participants']:
+                if summoner_id == summoner_ids[participant['participantId']]:
+                    return participant['stats']['winner']
+
         return None
 
 
 class Summoner:
 
-    def __init__(self, summoner_id, name, tier, division):
+    def __init__(self, summoner_id, name, tier):
         self.summoner_id = summoner_id
         self.name = name
         self.tier = tier
-        self.division = division

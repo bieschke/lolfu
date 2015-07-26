@@ -7,12 +7,14 @@ http://leagueoflegends.com
 
 import argparse
 import cherrypy
+import json
 import operator
 import os
 import os.path
 import riot
 import sys
 import threading
+import time
 import queue
 from mako.lookup import TemplateLookup
 
@@ -23,10 +25,47 @@ STATIC_DIR = os.path.dirname(os.path.abspath(__file__)) + os.sep + 'static'
 TMP_DIR = os.path.dirname(os.path.abspath(__file__)) + os.sep + 'tmp'
 
 
-MATCH_FILE = DATA_DIR + os.sep + 'match.csv'
-
-
 lookup = TemplateLookup(directories=HTML_DIR, module_directory=TMP_DIR)
+
+
+class MatchIdThread(threading.Thread):
+
+    def __init__(self, match_queue, start_id):
+        threading.Thread.__init__(self, daemon=True)
+        self.match_queue = match_queue
+        self.next_id = start_id
+
+    def run(self):
+        while True:
+            self.match_queue.put(self.next_id)
+            self.next_id += 1
+
+
+class MatchCollectorThread(threading.Thread):
+
+    def __init__(self, api, match_queue):
+        threading.Thread.__init__(self, daemon=True)
+        self.api = api
+        self.match_queue = match_queue
+
+    def run(self):
+        while True:
+            match_id = self.match_queue.get()
+            self.api.match(match_id)
+            self.match_queue.task_done()
+
+
+class FuncWaitRepeatThread(threading.Thread):
+
+    def __init__(self, func, wait):
+        threading.Thread.__init__(self, daemon=True)
+        self.func = func
+        self.wait = wait
+
+    def run(self):
+        while True:
+            self.func()
+            time.sleep(wait)
 
 
 class Lolfu:
@@ -34,90 +73,64 @@ class Lolfu:
     summoner by name and receive a webpage in return that advises them what are the
     winrate optimal champions to play in each position.
     """
+    MATCH_START_ID = 1886000141 # FIXME
 
-    def __init__(self):
-        self.api = riot.RiotAPI()
-        self.wins = {}
-        self.losses = {}
-        self.known_match_ids = set()
-        self.background_match_collection()
+    def __init__(self, background_threads):
+        self.api = riot.RiotAPI(DATA_DIR)
 
-    def background_match_collection(self):
-        """Launch daemon threads to collect match data."""
+        # spawn threads to collect match data in the background
+        match_queue = queue.Queue(background_threads * 2)
+        for i in range(background_threads):
+            MatchCollectorThread(self.api, match_queue).start()
+        MatchIdThread(match_queue, self.MATCH_START_ID).start()
 
-        # establish shared MATCH_FILE printing queue
-        print_queue = queue.Queue()
+        # update stats waiting one hour between
+        FuncWaitRepeatThread(self.update_stats, 60 * 60).start()
 
-        # worker threads to actually perform roundtrips to the LOL API
-        summoner_queue = queue.Queue(maxsize=10000)
-        for i in range(10):
-            MatchCollectorThread(self.api, summoner_queue, print_queue, self.known_match_ids, self.wins, self.losses).start()
+    def update_stats(self):
+        match_count = 0
+        wins = {}
+        losses = {}
 
-        # accumulate all of the ids for which we have already collected data
-        with open(MATCH_FILE, 'r') as f:
-            for line in f:
-                row = line.strip().split(',')
-                try:
-                    match_id, match_version, match_creation, \
-                        winner_top_summoner_id, winner_top_champion_id, winner_top_tier, \
-                        winner_jungler_summoner_id, winner_jungler_champion_id, winner_jungler_tier, \
-                        winner_mid_summoner_id, winner_mid_champion_id, winner_mid_tier, \
-                        winner_adc_summoner_id, winner_adc_champion_id, winner_adc_tier, \
-                        winner_support_summoner_id, winner_support_champion_id, winner_support_tier, \
-                        loser_top_summoner_id, loser_top_champion_id, loser_top_tier, \
-                        loser_jungler_summoner_id, loser_jungler_champion_id, loser_jungler_tier, \
-                        loser_mid_summoner_id, loser_mid_champion_id, loser_mid_tier, \
-                        loser_adc_summoner_id, loser_adc_champion_id, loser_adc_tier, \
-                        loser_support_summoner_id, loser_support_champion_id, loser_support_tier \
-                        = row
-                except ValueError:
-                    continue # skip malformed lines
+        for root, dirs, files in os.walk(DATA_DIR + os.sep + 'match'):
+            for name in files:
+                with open(os.path.join(root, name), 'r') as f:
+                    match = json.load(f)
+                    if match['season'] != riot.CURRENT_SEASON:
+                        break
+                    if match['queueType'] != riot.SOLOQUEUE:
+                        break
+                    #if not match['matchVersion'].startswith(riot.CURRENT_VERSION):
+                    #    break
 
-                self.known_match_ids.add(int(match_id))
+                # create a mapping of participant ids to summoner ids
+                summoner_ids = {}
+                for identity in match['participantIdentities']:
+                    participant_id = identity['participantId']
+                    summoner_id = int(identity['player']['summonerId'])
+                    summoner_ids[participant_id] = summoner_id
 
-                if '?' in row:
-                    continue # skip matches with unknown data
+                # collect data for each participant
+                for participant in match['participants']:
+                    participant_id = participant['participantId']
+                    summoner_id = int(summoner_ids[participant_id])
+                    champion_id = int(participant['championId'])
+                    timeline = participant['timeline']
+                    lane = timeline['lane']
+                    role = timeline['role']
+                    position = riot.position(lane, role, champion_id)
+                    tier = self.api.tier(summoner_id)
+                    if position and tier:
+                        if participant['stats']['winner']:
+                            wins.setdefault(tier, {}).setdefault(position, {}).setdefault(champion_id, 0)
+                            wins[tier][position][champion_id] += 1
+                        else:
+                            losses.setdefault(tier, {}).setdefault(position, {}).setdefault(champion_id, 0)
+                            losses[tier][position][champion_id] += 1
+                        match_count += 1
 
-                for summoner_id in (
-                        winner_top_summoner_id,
-                        winner_jungler_summoner_id,
-                        winner_mid_summoner_id,
-                        winner_adc_summoner_id,
-                        winner_support_summoner_id,
-                        loser_top_summoner_id,
-                        loser_jungler_summoner_id,
-                        loser_mid_summoner_id,
-                        loser_adc_summoner_id,
-                        loser_support_summoner_id,
-                        ):
-                    break # FIXME
-                    try:
-                        summoner_queue.put_nowait(int(summoner_id))
-                    except queue.Full:
-                        pass
-
-                for (champion_id, tier), position in zip((
-                        (winner_top_champion_id, winner_top_tier),
-                        (winner_jungler_champion_id, winner_jungler_tier),
-                        (winner_mid_champion_id, winner_mid_tier),
-                        (winner_adc_champion_id, winner_adc_tier),
-                        (winner_support_champion_id, winner_support_tier),
-                        ), riot.POSITIONS):
-                    self.wins.setdefault(tier, {}).setdefault(position, {}).setdefault(int(champion_id), 0)
-                    self.wins[tier][position][int(champion_id)] += 1
-
-                for (champion_id, tier), position in zip((
-                        (loser_top_champion_id, loser_top_tier),
-                        (loser_jungler_champion_id, loser_jungler_tier),
-                        (loser_mid_champion_id, loser_mid_tier),
-                        (loser_adc_champion_id, loser_adc_tier),
-                        (loser_support_champion_id, loser_support_tier),
-                        ), riot.POSITIONS):
-                    self.losses.setdefault(tier, {}).setdefault(position, {}).setdefault(int(champion_id), 0)
-                    self.losses[tier][position][int(champion_id)] += 1
-
-        # don't start writing to the MATCH_FILE until we've read it
-        PrintThread(print_queue, open(MATCH_FILE, 'a')).start()
+        self.match_count, self.wins, self.losses = match_count, wins, losses
+        cherrypy.log('%d matches loaded' % self.match_count)
 
     def html(self, template, **kw):
         return lookup.get_template(template).render_unicode(**kw).encode('utf-8', 'replace')
@@ -125,7 +138,7 @@ class Lolfu:
     @cherrypy.expose
     def index(self):
         """Return the homepage."""
-        return self.html('index.html', match_count=len(self.known_match_ids), version=riot.CURRENT_VERSION)
+        return self.html('index.html', match_count=self.match_count, version=riot.CURRENT_VERSION)
 
     @cherrypy.expose
     def summoner(self, who):
@@ -152,7 +165,7 @@ class Lolfu:
         practice_recs = one_rec_per_position([c for c in sc if c.sessions < 10 and c.winrate_expected > .5])
 
         return self.html('summoner.html', summoner=summoner,
-            match_count=len(self.known_match_ids), version=riot.CURRENT_VERSION,
+            match_count=self.match_count, version=riot.CURRENT_VERSION,
             climb_recs=climb_recs, position_recs=position_recs, practice_recs=practice_recs)
 
     def summoner_perfomance(self, summoner_id, tier):
@@ -161,24 +174,16 @@ class Lolfu:
         # process each match
         wins = {}
         losses = {}
-        for match in self.api.matchhistory(summoner_id, multithread=True):
-            match_id = int(match['matchId'])
-            if match['season'] != riot.CURRENT_SEASON:
-                break
+        for match in self.api.matchlist(summoner_id):
+            champion_id = match['champion']
 
-            if len(match['participants']) != 1:
-                raise ValueError('Expected exactly one participant')
-            participant = match['participants'][0]
-
-            champion_id = int(participant['championId'])
-            timeline = participant['timeline']
-            lane = timeline['lane']
-            role = timeline['role']
-            victory = participant['stats']['winner']
-
-            position = riot.position(lane, role, champion_id)
+            position = riot.position(match['lane'], match['role'], champion_id)
             if position is None:
                 continue # skip matches where we can't determine position
+
+            victory = self.api.victory(match['matchId'], summoner_id)
+            if victory is None:
+                continue # skip inscrutable victory conditions
 
             if victory:
                 wins.setdefault(position, {}).setdefault(champion_id, 0)
@@ -237,107 +242,6 @@ class Placeholder(SummonerChampion):
         self.position = position
 
 
-class MatchCollectorThread(threading.Thread):
-
-    def __init__(self, api, summoner_queue, print_queue, known_match_ids, wins, losses):
-        threading.Thread.__init__(self, daemon=True)
-        self.api = api
-        self.summoner_queue = summoner_queue
-        self.print_queue = print_queue
-        self.known_match_ids = known_match_ids
-        self.wins = wins
-        self.losses = losses
-
-    def run(self):
-        while True:
-            summoner_id = self.summoner_queue.get()
-            self.work(summoner_id)
-            self.summoner_queue.task_done()
-
-    def work(self, summoner_id):
-
-        for match in self.api.matchhistory(summoner_id):
-
-            match_id = int(match['matchId'])
-            if match_id in self.known_match_ids:
-                continue # skip already observed matches
-            self.known_match_ids.add(match_id)
-
-            match_version = match['matchVersion']
-            if not match_version.startswith(riot.CURRENT_VERSION):
-                break
-
-            # the matchhistory endpoint does not include information in all
-            # participants within the match, to receive those we issue a second
-            # call to the match endpoint.
-            match = self.api.match(match_id)
-            if not match:
-                continue # skip matches that do not exist
-
-            # create a mapping of participant ids to summoner ids
-            summoner_ids = {}
-            for identity in match['participantIdentities']:
-                participant_id = identity['participantId']
-                summoner_id = int(identity['player']['summonerId'])
-                summoner_ids[participant_id] = summoner_id
-
-            # create a mapping of summoner ids to tier and divisions
-            tier_divisions = self.api.tiers_divisions(summoner_ids.values())
-            if not tier_divisions:
-                tier_divisions = {}
-
-            # collect data for each participant
-            winners = {}
-            losers = {}
-            for participant in match['participants']:
-                participant_id = participant['participantId']
-                summoner_id = int(summoner_ids[participant_id])
-                champion_id = int(participant['championId'])
-                stats = participant['stats']
-                timeline = participant['timeline']
-                lane = timeline['lane']
-                role = timeline['role']
-                tier = tier_divisions.get(summoner_id, ('?', '?'))[0]
-                position = riot.position(lane, role, champion_id)
-                if stats['winner']:
-                    winners[position] = (summoner_id, champion_id, tier)
-                    if tier != '?' and position is not None:
-                        self.wins.setdefault(tier, {}).setdefault(position, {}).setdefault(champion_id, 0)
-                        self.wins[tier][position][champion_id] += 1
-                else:
-                    losers[position] = (summoner_id, champion_id, tier)
-                    if tier != '?' and position is not None:
-                        self.losses.setdefault(tier, {}).setdefault(position, {}).setdefault(champion_id, 0)
-                        self.losses[tier][position][champion_id] += 1
-
-                # remember summoners from this match
-                try:
-                    self.summoner_queue.put_nowait(summoner_id)
-                except queue.Full:
-                    pass
-
-            # cheesy CSV formatting
-            output = [match_id, match_version, match['matchCreation']]
-            for participants in (winners, losers):
-                # align participants ordering with position ordering
-                for position in riot.POSITIONS:
-                    output.extend(participants.get(position, ('?', '?', '?')))
-            self.print_queue.put(','.join([str(i) for i in output]))
-
-
-class PrintThread(threading.Thread):
-
-    def __init__(self, print_queue, outfile):
-        threading.Thread.__init__(self, daemon=True)
-        self.print_queue = print_queue
-        self.outfile = outfile
-
-    def run(self):
-        while True:
-            line = self.print_queue.get()
-            print(line, file=self.outfile)
-            self.print_queue.task_done()
-
 
 if __name__ == '__main__':
     """Launch the application."""
@@ -353,6 +257,8 @@ if __name__ == '__main__':
         help='What file should we write access logs to?')
     parser.add_argument('--error-log', default=None,
         help='What file should we write error logs to?')
+    parser.add_argument('--background-threads', type=int, default=1,
+        help='How many background threads should we use to collect data?')
     args = parser.parse_args()
 
     # global cherrypy configuration
@@ -373,4 +279,4 @@ if __name__ == '__main__':
             'tools.staticdir.dir': STATIC_DIR,
         }
     }
-    cherrypy.quickstart(Lolfu(), '/', cfg)
+    cherrypy.quickstart(Lolfu(args.background_threads), '/', cfg)
