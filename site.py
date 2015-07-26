@@ -51,7 +51,10 @@ class MatchCollectorThread(threading.Thread):
     def run(self):
         while True:
             match_id = self.match_queue.get()
-            self.api.match(match_id)
+            match = self.api.match(match_id)
+            if match:
+                for identity in match['participantIdentities']:
+                    self.api.tier(int(identity['player']['summonerId']))
             self.match_queue.task_done()
 
 
@@ -65,7 +68,7 @@ class FuncWaitRepeatThread(threading.Thread):
     def run(self):
         while True:
             self.func()
-            time.sleep(wait)
+            time.sleep(self.wait)
 
 
 class Lolfu:
@@ -73,16 +76,19 @@ class Lolfu:
     summoner by name and receive a webpage in return that advises them what are the
     winrate optimal champions to play in each position.
     """
-    MATCH_START_ID = 1886000141 # FIXME
+    MATCH_START_ID = 1886626000 # FIXME
 
     def __init__(self, background_threads):
         self.api = riot.RiotAPI(DATA_DIR)
+        self.match_count = 0
+        self.wins = {}
+        self.losses = {}
 
         # spawn threads to collect match data in the background
         match_queue = queue.Queue(background_threads * 2)
+        MatchIdThread(match_queue, self.MATCH_START_ID).start()
         for i in range(background_threads):
             MatchCollectorThread(self.api, match_queue).start()
-        MatchIdThread(match_queue, self.MATCH_START_ID).start()
 
         # update stats waiting one hour between
         FuncWaitRepeatThread(self.update_stats, 60 * 60).start()
