@@ -52,7 +52,7 @@ class MatchCollectorThread(threading.Thread):
         while True:
             match_id = self.match_queue.get()
             match = self.api.match(match_id)
-            if match:
+            if match and match['queueType'] == riot.SOLOQUEUE:
                 for identity in match['participantIdentities']:
                     self.api.tier(int(identity['player']['summonerId']))
             self.match_queue.task_done()
