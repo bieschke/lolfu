@@ -12,14 +12,10 @@ import cherrypy
 import configparser
 import functools
 import json
-import operator
 import os
 import os.path
 import requests
-import sys
-import threading
 import time
-import queue
 
 CURRENT_SEASON = 'SEASON2015'
 CURRENT_VERSION = '5.14'
@@ -27,11 +23,10 @@ CURRENT_VERSION = '5.14'
 SOLOQUEUE = 'RANKED_SOLO_5x5'
 
 # Riot's lanes
-RIOT_TOP = 'TOP'
-RIOT_JUNGLE = 'JUNGLE'
-RIOT_MIDDLE = 'MIDDLE'
-RIOT_BOT = 'BOTTOM'
-RIOT_LANES = (RIOT_TOP, RIOT_JUNGLE, RIOT_MIDDLE, RIOT_BOT)
+RIOT_TOP = ('TOP', )
+RIOT_JUNGLE = ('JUNGLE', )
+RIOT_MIDDLE = ('MID', 'MIDDLE')
+RIOT_BOT = ('BOT', 'BOTTOM')
 
 # Riot's roles
 RIOT_NONE = 'NONE'
@@ -39,7 +34,6 @@ RIOT_SOLO = 'SOLO'
 RIOT_DUO = 'DUO'
 RIOT_DUO_CARRY = 'DUO_CARRY'
 RIOT_DUO_SUPPORT = 'DUO_SUPPORT'
-RIOT_ROLES = (RIOT_NONE, RIOT_SOLO, RIOT_DUO, RIOT_DUO_CARRY, RIOT_DUO_SUPPORT)
 
 # Non-Riot sanctioned positions
 TOP = 'TOP'
@@ -52,15 +46,15 @@ POSITIONS = (TOP, JUNGLE, MID, ADC, SUPPORT)
 
 def position(lane, role, champion_id):
     """Return the position for the given lane and role."""
-    if lane == RIOT_TOP and role == RIOT_SOLO:
+    if lane in RIOT_TOP and role == RIOT_SOLO:
         return TOP
-    elif lane == RIOT_JUNGLE and role == RIOT_NONE:
+    elif lane in RIOT_JUNGLE and role == RIOT_NONE:
         return JUNGLE
-    elif lane == RIOT_MIDDLE and role == RIOT_SOLO:
+    elif lane in RIOT_MIDDLE and role == RIOT_SOLO:
         return MID
-    elif lane == RIOT_BOT and role == RIOT_DUO_CARRY:
+    elif lane in RIOT_BOT and role == RIOT_DUO_CARRY:
         return ADC
-    elif lane == RIOT_BOT and role == RIOT_DUO_SUPPORT:
+    elif lane in RIOT_BOT and role == RIOT_DUO_SUPPORT:
         return SUPPORT
     return None
 
@@ -68,7 +62,6 @@ def position(lane, role, champion_id):
 class RiotAPI:
 
     base_url = 'https://na.api.pvp.net'
-    last_call = time.time()
 
     def __init__(self, cache_dir):
         cfg = configparser.SafeConfigParser()
@@ -152,11 +145,11 @@ class RiotAPI:
         """Return the summoner having the given name."""
         summoner = self.call('/api/lol/na/v1.4/summoner/by-name/%s' % name)
         if summoner:
-            for dto in summoner.values():
+            for standardized_name, dto in summoner.items():
                 summoner_id = dto['id']
                 name = dto['name']
                 tier = self.tier(summoner_id)
-                return Summoner(summoner_id, name, tier)
+                return Summoner(summoner_id, name, standardized_name, tier)
         return None
 
     @functools.lru_cache()
@@ -198,7 +191,8 @@ class RiotAPI:
 
 class Summoner:
 
-    def __init__(self, summoner_id, name, tier):
+    def __init__(self, summoner_id, name, standardized_name, tier):
         self.summoner_id = summoner_id
         self.name = name
+        self.standardized_name = standardized_name
         self.tier = tier

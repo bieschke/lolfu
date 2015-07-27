@@ -12,7 +12,6 @@ import operator
 import os
 import os.path
 import riot
-import sys
 import threading
 import time
 import queue
@@ -71,12 +70,13 @@ class FuncWaitRepeatThread(threading.Thread):
             time.sleep(self.wait)
 
 
+@cherrypy.popargs('who')
 class Lolfu:
     """CherryPy application that allows League of Legends summoners to lookup their
     summoner by name and receive a webpage in return that advises them what are the
     winrate optimal champions to play in each position.
     """
-    MATCH_START_ID = 1886626000 # FIXME
+    MATCH_START_ID = 1886684000 # FIXME
 
     def __init__(self, background_threads):
         self.api = riot.RiotAPI(DATA_DIR)
@@ -139,40 +139,69 @@ class Lolfu:
         cherrypy.log('%d matches loaded' % self.match_count)
 
     def html(self, template, **kw):
-        return lookup.get_template(template).render_unicode(**kw).encode('utf-8', 'replace')
+        return lookup.get_template(template).render_unicode(
+            match_count=self.match_count, version=riot.CURRENT_VERSION, riot=riot, **kw).encode('utf-8', 'replace')
 
     @cherrypy.expose
-    def index(self):
-        """Return the homepage."""
-        return self.html('index.html', match_count=self.match_count, version=riot.CURRENT_VERSION)
+    def index(self, who=None):
+        """Return either the app homepage or the summoner's homepage."""
+
+        if who:
+
+            def one_rec_per_position(recs):
+                results = []
+                for p in riot.POSITIONS:
+                    for rec in recs:
+                        if rec.position == p:
+                            results.append(rec)
+                            break
+                    else:
+                        results.append(Placeholder(p))
+                for result in results:
+                    if not result.placeholder:
+                        return results
+                return []
+
+            summoner = self.api.summoner_by_name(who)
+            sc = self.summoner_perfomance(summoner.summoner_id, summoner.tier)
+            climb_recs = [c for c in sc if c.sessions >= 10 and c.winrate_expected > .5][:5]
+            position_recs = one_rec_per_position([c for c in sc if c.sessions >= 10])
+            practice_recs = one_rec_per_position([c for c in sc if c.sessions < 10])
+
+            return self.html('summoner.html', summoner=summoner, climb_recs=climb_recs, position_recs=position_recs, practice_recs=practice_recs)
+
+        return self.html('index.html')
 
     @cherrypy.expose
     def summoner(self, who):
         """Return a webpage with details about the given summoner."""
-
-        def one_rec_per_position(recs):
-            results = []
-            for p in riot.POSITIONS:
-                for rec in recs:
-                    if rec.position == p:
-                        results.append(rec)
-                        break
-                else:
-                    results.append(Placeholder(p))
-            for result in results:
-                if not result.placeholder:
-                    return results
-            return []
-
         summoner = self.api.summoner_by_name(who)
-        sc = self.summoner_perfomance(summoner.summoner_id, summoner.tier)
-        climb_recs = [c for c in sc if c.sessions >= 10 and c.winrate_expected > .5][:5]
-        position_recs = one_rec_per_position([c for c in sc if c.sessions >= 10])
-        practice_recs = one_rec_per_position([c for c in sc if c.sessions < 10 and c.winrate_expected > .5])
+        raise cherrypy.HTTPRedirect('/' + summoner.standardized_name, 301)
 
-        return self.html('summoner.html', summoner=summoner,
-            match_count=self.match_count, version=riot.CURRENT_VERSION,
-            climb_recs=climb_recs, position_recs=position_recs, practice_recs=practice_recs)
+    def position(self, position, who):
+        summoner = self.api.summoner_by_name(who)
+        sc = [c for c in self.summoner_perfomance(summoner.summoner_id, summoner.tier) if c.position == position]
+        return self.html('position.html', summoner=summoner, sc=sc, position=position)
+
+    @cherrypy.expose
+    def top(self, who):
+        return self.position(riot.TOP, who)
+
+    @cherrypy.expose
+    def jungle(self, who):
+        return self.position(riot.JUNGLE, who)
+
+    @cherrypy.expose
+    def mid(self, who):
+        return self.position(riot.MID, who)
+
+    @cherrypy.expose
+    def adc(self, who):
+        return self.position(riot.ADC, who)
+
+    @cherrypy.expose
+    def support(self, who):
+        return self.position(riot.SUPPORT, who)
 
     def summoner_perfomance(self, summoner_id, tier):
         """Return a summary of how a summoner performs on all champions."""
@@ -279,10 +308,5 @@ if __name__ == '__main__':
     cherrypy.config.update(global_cfg)
 
     # application configuration and start
-    cfg = {
-        '/static': {
-            'tools.staticdir.on': True,
-            'tools.staticdir.dir': STATIC_DIR,
-        }
-    }
-    cherrypy.quickstart(Lolfu(args.background_threads), '/', cfg)
+    cherrypy.tree.mount(None, '/static', { '/' : { 'tools.staticdir.on': True, 'tools.staticdir.dir': STATIC_DIR }})
+    cherrypy.quickstart(Lolfu(args.background_threads), '/')

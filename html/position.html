@@ -1,0 +1,55 @@
+<%inherit file="base.html"/>
+
+<%block name="title">${summoner.name} - ${position.capitalize()}</%block>
+
+<%include file="navbar.html"/>
+
+% for c in [c for c in sc if c.sessions][:3]:
+
+<div class="col-md-4 text-center">
+    <div class="thumbnail well" style="padding: 0;">
+        <h2><small>${c.position.capitalize()}</small></h2>
+        <img class="img-rounded" src="/static/img/champion/${c.champion_image}" alt="${c.champion_name}">
+        <div class="caption">
+            <h3>${c.champion_name}</h3>
+            <h4>${c.wins} Wins</h4>
+            <h4>${c.losses} Losses</h4>
+            <h4>${round(100 * c.winrate_summoner)}% Winrate</h4>
+            <h4>${round(100 * c.winrate_tier)}% ${summoner.tier} Winrate</h4>
+            <h4>${round(100 * c.winrate_expected)}% Expected Winrate</h4>
+        </div>
+    </div>
+</div>
+
+% endfor
+
+<table class="table table-striped sortable">
+    <thead>
+        <tr>
+            <th>Position</th>
+            <th>Champion</th>
+            <th>Wins</th>
+            <th>Losses</th>
+            <th>${summoner.name} Winrate</th>
+            <th>${summoner.tier} Winrate</th>
+            <th>Expected Winrate</th>
+        </tr>
+    </thead>
+    <tbody>
+        % for c in sc:
+        <tr>
+            <td>${c.position.capitalize()}</td>
+            <td><img class="img-circle" style="height:1.5em;" src="/static/img/champion/${c.champion_image}"> ${c.champion_name}</td>
+            <td>${c.wins if c.sessions else '-'}</td>
+            <td>${c.losses if c.sessions else '-'}</td>
+            % if c.sessions:
+            <td>${round(100 * c.winrate_summoner, 1)}%</td>
+            % else:
+            <td>-</td>
+            % endif
+            <td>${round(100 * c.winrate_tier, 1)}%</td>
+            <td>${round(100 * c.winrate_expected, 1)}%</td>
+        </tr>
+        % endfor
+    </tbody>
+</table>
