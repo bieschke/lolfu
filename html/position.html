@@ -36,7 +36,7 @@
         </tr>
     </thead>
     <tbody>
-        % for c in sc:
+        % for c in [c for c in sc if c.sessions]:
         <tr>
             <td>${c.position.capitalize()}</td>
             <td><img class="img-circle" style="height:1.5em;" src="/static/img/champion/${c.champion_image}"> ${c.champion_name}</td>
