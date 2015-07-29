@@ -7,19 +7,12 @@
             <a class="navbar-brand" href="/">LOLFU</a>
 
             <ul class="nav navbar-nav">
-                <li ${'class="active"' if not position else ''}><a href="/${summoner.standardized_name}">${summoner.name}</a></li>
-                <li ${'class="active"' if position == riot.TOP else ''}><a href="/${summoner.standardized_name}/top">Top</a></li>
-                <li ${'class="active"' if position == riot.JUNGLE else ''}><a href="/${summoner.standardized_name}/jungle">Jungle</a></li>
-                <li ${'class="active"' if position == riot.MID else ''}><a href="/${summoner.standardized_name}/mid">Mid</a></li>
-                <li ${'class="active"' if position == riot.ADC else ''}><a href="/${summoner.standardized_name}/adc">ADC</a></li>
-                <li ${'class="active"' if position == riot.SUPPORT else ''}><a href="/${summoner.standardized_name}/support">Support</a></li>
+                <li class="active"><a href="/${summoner.standardized_name}">${summoner.name | h}</a></li>
             </ul>
 
         </div>
 
         <div class="collapse navbar-collapse">
-
-            <p class="navbar-text">Using data from ${match_count} matches on patch ${version}.</p>
 
             <form class="navbar-form navbar-right" role="search" method="get" action="summoner">
                 <div class="form-group">

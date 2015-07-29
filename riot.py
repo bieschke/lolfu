@@ -8,7 +8,6 @@ Developer API documentation can be found here:
 https://developer.riotgames.com/api/methods
 """
 
-import cherrypy
 import configparser
 import functools
 import json
@@ -63,10 +62,11 @@ class RiotAPI:
 
     base_url = 'https://na.api.pvp.net'
 
-    def __init__(self, cache_dir):
+    def __init__(self, logger, cache_dir):
         cfg = configparser.SafeConfigParser()
         cfg.read(os.path.dirname(os.path.abspath(__file__)) + os.sep + 'riot.cfg')
         self.api_key = cfg.get('riot', 'api_key')
+        self.logger = logger
         self.cache_dir = cache_dir
 
     def call(self, path, cache_to_file=False, **params):
@@ -86,7 +86,7 @@ class RiotAPI:
             start = time.time()
             response = requests.get(self.base_url + path, params=params)
             end = time.time()
-            cherrypy.log('[%.0fms] %d %s' % (1000.0 * (end - start), response.status_code, path))
+            self.logger.log('[%.0fms] %d %s' % (1000.0 * (end - start), response.status_code, path))
 
             # https://developer.riotgames.com/docs/response-codes
             # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
@@ -119,6 +119,10 @@ class RiotAPI:
         """Return the image filename for the given champion."""
         return self.champions()['data'][str(champion_id)]['image']['full']
 
+    def champion_key(self, champion_id):
+        """Return the key for the given champion."""
+        return self.champions()['data'][str(champion_id)]['key']
+
     def champion_name(self, champion_id):
         """Return the name of the champion associated with the given champion ID."""
         return self.champions()['data'][str(champion_id)]['name']
@@ -148,22 +152,7 @@ class RiotAPI:
             for standardized_name, dto in summoner.items():
                 summoner_id = dto['id']
                 name = dto['name']
-                tier = self.tier(summoner_id)
-                return Summoner(summoner_id, name, standardized_name, tier)
-        return None
-
-    @functools.lru_cache()
-    def tier(self, summoner_id):
-        """Return the tier of the given summoner."""
-
-        cache_file = os.path.join(self.cache_dir, 'tier',
-            str(summoner_id)[-1], str(summoner_id)[-2], str(summoner_id)[-3], '%d.dat' % summoner_id)
-        response = self.call('/api/lol/na/v2.5/league/by-summoner/%s/entry' % summoner_id, cache_to_file=cache_file)
-
-        if response:
-            for league in response.get(str(summoner_id), []):
-                if league['queue'] == SOLOQUEUE:
-                    return league['tier'].capitalize()
+                return Summoner(summoner_id, name, standardized_name)
         return None
 
     @functools.lru_cache()
@@ -191,8 +180,7 @@ class RiotAPI:
 
 class Summoner:
 
-    def __init__(self, summoner_id, name, standardized_name, tier):
+    def __init__(self, summoner_id, name, standardized_name):
         self.summoner_id = summoner_id
         self.name = name
         self.standardized_name = standardized_name
-        self.tier = tier
