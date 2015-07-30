@@ -109,29 +109,39 @@
 </div>
 % endif
 
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Position</th>
-            <th>Champion</th>
-            <th>Games</th>
-            <th>Wins</th>
-            <th>Losses</th>
-            <th>Actual Winrate</th>
-            <th>Expected Winrate</th>
-        </tr>
-    </thead>
-    <tbody>
-        % for c in sc:
-        <tr>
-            <td>${c.position.capitalize()}</td>
-            <td><img class="img-circle" style="height:1.5em;" src="/static/img/champion/${c.champion_image}"> ${c.champion_name | h}</td>
-            <td>${c.sessions}</td>
-            <td>${c.wins}</td>
-            <td>${c.losses}</td>
-            <td>${round(100 * c.winrate_summoner)}%</td>
-            <td>${round(100 * c.winrate_expected)}%</td>
-        </tr>
-        % endfor
-    </tbody>
-</table>
+<div class="row">
+    <div class="col-md-2">
+        <p class="lead text-right">
+            Details of all champion position combinations
+            <span class="glyphicon glyphicon-arrow-right" aria-hidden="true"></span>
+        </p>
+    </div>
+    <div class="col-md-10">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Position</th>
+                    <th>Champion</th>
+                    <th>Games</th>
+                    <th>Wins</th>
+                    <th>Losses</th>
+                    <th>Actual Winrate</th>
+                    <th>Expected Winrate</th>
+                </tr>
+            </thead>
+            <tbody>
+                % for c in sc:
+                <tr>
+                    <td>${c.position.capitalize()}</td>
+                    <td><img class="img-circle" style="height:1.5em;" src="/static/img/champion/${c.champion_image}"> ${c.champion_name | h}</td>
+                    <td>${c.sessions}</td>
+                    <td>${c.wins}</td>
+                    <td>${c.losses}</td>
+                    <td>${round(100 * c.winrate_summoner)}%</td>
+                    <td>${round(100 * c.winrate_expected)}%</td>
+                </tr>
+                % endfor
+            </tbody>
+        </table>
+    </div>
+</div>
