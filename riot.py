@@ -227,7 +227,7 @@ class Summoner:
 class ClientSession(aiohttp.ClientSession):
     MAX_CONCURRENCY = 100
 
-    def __init__(self, *args, **kw):
+    def __init__(self):
 
         # lazily create the default event loop for this thread
         try:
@@ -236,6 +236,9 @@ class ClientSession(aiohttp.ClientSession):
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
 
-        super(ClientSession, self).__init__(*args, **kw)
+        # some installations of Python 3.4 have a bug in asyncio that this works around
+        connector = aiohttp.TCPConnector(verify_ssl=False)
+
+        super(ClientSession, self).__init__(connector=connector)
 
         self.sem = asyncio.Semaphore(self.MAX_CONCURRENCY)
