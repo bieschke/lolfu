@@ -8,6 +8,8 @@ Developer API documentation can be found here:
 https://developer.riotgames.com/api/methods
 """
 
+import asyncio
+import aiohttp
 import configparser
 import functools
 import json
@@ -17,7 +19,6 @@ import requests
 import time
 
 CURRENT_SEASON = 'SEASON2015'
-CURRENT_VERSION = '5.14'
 
 SOLOQUEUE = 'RANKED_SOLO_5x5'
 
@@ -69,16 +70,28 @@ class RiotAPI:
         self.logger = logger
         self.cache_dir = cache_dir
 
-    def call(self, path, cache_to_file=False, **params):
-        """Execute a remote API call and return the JSON results."""
-        params['api_key'] = self.api_key
-
-        if cache_to_file:
+    def _cache_file_read(self, cache_file):
+        if cache_file:
             try:
-                with open(cache_to_file, 'r') as f:
+                with open(cache_file, 'r') as f:
                     return json.load(f)
             except OSError:
                 pass # cache file does not exist
+        return None
+
+    def _cache_file_write(self, cache_file, result):
+        if cache_file:
+            os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+            with open(cache_file, 'x') as f:
+                json.dump(result, f)
+
+    def call(self, path, cache_file=False, **params):
+        """Execute a remote API call and return the JSON results."""
+        params['api_key'] = self.api_key
+
+        result = self._cache_file_read(cache_file)
+        if result:
+            return result
 
         retry_seconds = 1
         while True:
@@ -107,12 +120,48 @@ class RiotAPI:
             break
 
         result = response.json()
+        self._cache_file_write(cache_file, result)
+        return result
 
-        if cache_to_file:
-            os.makedirs(os.path.dirname(cache_to_file), exist_ok=True)
-            with open(cache_to_file, 'x') as f:
-                json.dump(result, f)
+    @asyncio.coroutine
+    def call_async(self, session, path, cache_file=False, **params):
+        params['api_key'] = self.api_key
 
+        result = self._cache_file_read(cache_file)
+        if result:
+            return result
+
+        retry_seconds = 1
+        while True:
+
+            start = time.time()
+            response = yield from session.get(self.base_url + path, params=params)
+            end = time.time()
+            self.logger.log('[%.0fms] %d %s' % (1000.0 * (end - start), response.status, path))
+
+            # https://developer.riotgames.com/docs/response-codes
+            # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
+            if response.status == 404:
+                # API returns 404 when the requested entity doesn't exist
+                return None
+            elif response.status == 429:
+                # retry after we're within our rate limit
+                retry_after = float(response.headers.get('Retry-After', retry_seconds))
+                response.close()
+                yield from asyncio.sleep(retry_after)
+                retry_seconds *= 2
+                continue
+            elif response.status in (500, 502, 503, 504):
+                # retry when the Riot API is having (hopefully temporary) difficulties
+                response.close()
+                yield from asyncio.sleep(retry_seconds)
+                retry_seconds *= 2
+                continue
+
+            break
+
+        result = yield from response.json()
+        self._cache_file_write(cache_file, result)
         return result
 
     def champion_image(self, champion_id):
@@ -132,12 +181,23 @@ class RiotAPI:
         """Return all champions."""
         return self.call('/api/lol/static-data/na/v1.2/champion', champData='image', dataById='true')
 
+    def match_cache_file(self, match_id):
+        return os.path.join(self.cache_dir, 'match',
+            str(match_id)[-1], str(match_id)[-2], str(match_id)[-3], '%d.dat' % match_id)
+
+    def match_path(self, match_id):
+        return '/api/lol/na/v2.2/match/%d' % match_id
+
     @functools.lru_cache()
     def match(self, match_id):
         """Return the requested match."""
-        cache_file = os.path.join(self.cache_dir, 'match',
-            str(match_id)[-1], str(match_id)[-2], str(match_id)[-3], '%d.dat' % match_id)
-        return self.call('/api/lol/na/v2.2/match/%d' % match_id, cache_to_file=cache_file)
+        return self.call(self.match_path(match_id), cache_file=self.match_cache_file(match_id))
+
+    @asyncio.coroutine
+    def match_async(self, session, match_id):
+        """Return the requested match within a coroutine."""
+        with (yield from session.sem):
+            return (yield from self.call_async(session, self.match_path(match_id), cache_file=self.match_cache_file(match_id)))
 
     def matchlist(self, summoner_id):
         """Return the match list for the given summoner."""
@@ -155,28 +215,6 @@ class RiotAPI:
                 return Summoner(summoner_id, name, standardized_name)
         return None
 
-    @functools.lru_cache()
-    def victory(self, match_id, summoner_id):
-        """Return true iff the given summoner won the given match.
-        
-        Returns None if the summoner did not play in the given match or if the given match
-        does not exist.
-        """
-        match = self.match(match_id)
-
-        if match:
-
-            # map participants to summoners
-            summoner_ids = {}
-            for pid in match['participantIdentities']:
-                summoner_ids[pid['participantId']] = pid['player']['summonerId']
-
-            for participant in match['participants']:
-                if summoner_id == summoner_ids[participant['participantId']]:
-                    return participant['stats']['winner']
-
-        return None
-
 
 class Summoner:
 
@@ -184,3 +222,20 @@ class Summoner:
         self.summoner_id = summoner_id
         self.name = name
         self.standardized_name = standardized_name
+
+
+class ClientSession(aiohttp.ClientSession):
+    MAX_CONCURRENCY = 100
+
+    def __init__(self, *args, **kw):
+
+        # lazily create the default event loop for this thread
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        super(ClientSession, self).__init__(*args, **kw)
+
+        self.sem = asyncio.Semaphore(self.MAX_CONCURRENCY)

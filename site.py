@@ -5,6 +5,7 @@ by name and receive a webpage that advises them about which champions to play.
 http://leagueoflegends.com
 """
 
+import asyncio
 import argparse
 import cherrypy
 import operator
@@ -76,34 +77,61 @@ class Lolfu:
     def summoner_perfomance(self, summoner_id):
         """Return a summary of how a summoner performs on all champions."""
 
-        # process each match
+        @asyncio.coroutine
+        def run():
+            positions = dict([(m['matchId'], riot.position(m['lane'], m['role'], m['champion'])) for m in matchlist])
+            champions = dict([(m['matchId'], m['champion']) for m in matchlist])
+
+            tasks = [self.api.match_async(session, m['matchId']) for m in matchlist if positions[m['matchId']]] # skip matches with no position
+            for f in asyncio.as_completed(tasks):
+                try:
+                    match = yield from f
+                except Exception as e:
+                    cherrypy.log(repr(e))
+                    continue
+
+                match_id = match['matchId']
+                position = positions[match_id]
+                champion_id = champions[match_id]
+
+                # map participants to summoners
+                summoner_ids = {}
+                for pid in match['participantIdentities']:
+                    summoner_ids[pid['participantId']] = pid['player']['summonerId']
+
+                # determine victory
+                victory = None
+                for participant in match['participants']:
+                    if summoner_id == summoner_ids[participant['participantId']]:
+                        victory = participant['stats']['winner']
+                        break
+
+                if victory is None:
+                    continue # skip inscrutable victory conditions
+                elif victory:
+                    wins.setdefault(position, {}).setdefault(champion_id, 0)
+                    wins[position][champion_id] += 1
+                else:
+                    losses.setdefault(position, {}).setdefault(champion_id, 0)
+                    losses[position][champion_id] += 1
+
         wins = {}
         losses = {}
-        for match in self.api.matchlist(summoner_id):
-            champion_id = match['champion']
+        matchlist = self.api.matchlist(summoner_id)
 
-            position = riot.position(match['lane'], match['role'], champion_id)
-            if position is None:
-                continue # skip matches where we can't determine position
-
-            victory = self.api.victory(match['matchId'], summoner_id)
-            if victory is None:
-                continue # skip inscrutable victory conditions
-
-            if victory:
-                wins.setdefault(position, {}).setdefault(champion_id, 0)
-                wins[position][champion_id] += 1
-            else:
-                losses.setdefault(position, {}).setdefault(champion_id, 0)
-                losses[position][champion_id] += 1
+        # parallelize network calls for each match
+        session = riot.ClientSession()
+        try:
+            asyncio.get_event_loop().run_until_complete(run())
+        finally:
+            session.close()
 
         # assemble results sorted by expected winrate
         results = []
         for position in riot.POSITIONS:
             cw = wins.get(position, {})
             cl = losses.get(position, {})
-            champion_ids = set(cw.keys()).union(cl.keys())
-            for champion_id in champion_ids:
+            for champion_id in set(cw.keys()).union(cl.keys()):
                 w = cw.get(champion_id, 0)
                 l = cl.get(champion_id, 0)
                 results.append(SummonerChampion(self.api, position, champion_id, w, l))
