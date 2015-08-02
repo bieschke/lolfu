@@ -143,6 +143,7 @@ class RiotAPI:
             # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
             if response.status == 404:
                 # API returns 404 when the requested entity doesn't exist
+                response.close()
                 return None
             elif response.status == 429:
                 # retry after we're within our rate limit
@@ -157,12 +158,11 @@ class RiotAPI:
                 yield from asyncio.sleep(retry_seconds)
                 retry_seconds *= 2
                 continue
-
-            break
-
-        result = yield from response.json()
-        self._cache_file_write(cache_file, result)
-        return result
+            else:
+                result = yield from response.json()
+                response.close()
+                self._cache_file_write(cache_file, result)
+                return result
 
     def champion_image(self, champion_id):
         """Return the image filename for the given champion."""
