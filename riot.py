@@ -199,10 +199,19 @@ class RiotAPI:
         with (yield from session.sem):
             return (yield from self.call_async(session, self.match_path(match_id), cache_file=self.match_cache_file(match_id)))
 
+    def matchlist_path(self, summoner_id):
+        return '/api/lol/na/v2.2/matchlist/by-summoner/%s' % summoner_id
+
     def matchlist(self, summoner_id):
         """Return the match list for the given summoner."""
-        return self.call('/api/lol/na/v2.2/matchlist/by-summoner/%s' % summoner_id,
-            rankedQueues=SOLOQUEUE, seasons=CURRENT_SEASON).get('matches', [])
+        return self.call(self.matchlist_path(summoner_id), rankedQueues=SOLOQUEUE, seasons=CURRENT_SEASON).get('matches', [])
+
+    @asyncio.coroutine
+    def matchlist_async(self, session, summoner_id):
+        """Return the match list for the given summoner within a coroutine."""
+        with (yield from session.sem):
+            f = yield from self.call_async(session, self.matchlist_path(summoner_id), rankedQueues=SOLOQUEUE, seasons=CURRENT_SEASON)
+            return f.get('matches', [])
 
     @functools.lru_cache()
     def summoner_by_name(self, name):
