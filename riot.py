@@ -80,7 +80,7 @@ class RiotAPI:
         return None
 
     def _cache_file_write(self, cache_file, result):
-        if cache_file:
+        if cache_file and result:
             os.makedirs(os.path.dirname(cache_file), exist_ok=True)
             with open(cache_file, 'x') as f:
                 json.dump(result, f)
@@ -133,36 +133,37 @@ class RiotAPI:
 
         retry_seconds = 1
         while True:
+            retry_after = None
+            with (yield from session.sem):
+                start = time.time()
+                response = yield from session.get(self.base_url + path, params=params)
+                try:
+                    end = time.time()
+                    self.logger.log('[%.0fms] %d %s' % (1000.0 * (end - start), response.status, path))
+                    # https://developer.riotgames.com/docs/response-codes
+                    # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
+                    if response.status == 404:
+                        # API returns 404 when the requested entity doesn't exist
+                        result = None
+                        break
+                    elif response.status == 429:
+                        # retry after we're within our rate limit
+                        retry_after = float(response.headers.get('Retry-After', retry_seconds))
+                    elif response.status in (500, 502, 503, 504):
+                        # retry when the Riot API is having (hopefully temporary) difficulties
+                        retry_after = retry_seconds
+                        retry_seconds *= 2
+                    else:
+                        result = yield from response.json()
+                        break
+                finally:
+                    response.close()
 
-            start = time.time()
-            response = yield from session.get(self.base_url + path, params=params)
-            end = time.time()
-            self.logger.log('[%.0fms] %d %s' % (1000.0 * (end - start), response.status, path))
-
-            # https://developer.riotgames.com/docs/response-codes
-            # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
-            if response.status == 404:
-                # API returns 404 when the requested entity doesn't exist
-                response.close()
-                return None
-            elif response.status == 429:
-                # retry after we're within our rate limit
-                retry_after = float(response.headers.get('Retry-After', retry_seconds))
-                response.close()
+            if retry_after:
                 yield from asyncio.sleep(retry_after)
-                retry_seconds *= 2
-                continue
-            elif response.status in (500, 502, 503, 504):
-                # retry when the Riot API is having (hopefully temporary) difficulties
-                response.close()
-                yield from asyncio.sleep(retry_seconds)
-                retry_seconds *= 2
-                continue
-            else:
-                result = yield from response.json()
-                response.close()
-                self._cache_file_write(cache_file, result)
-                return result
+
+        self._cache_file_write(cache_file, result)
+        return result
 
     def champion_image(self, champion_id):
         """Return the image filename for the given champion."""
@@ -196,8 +197,7 @@ class RiotAPI:
     @asyncio.coroutine
     def match_async(self, session, match_id):
         """Return the requested match within a coroutine."""
-        with (yield from session.sem):
-            return (yield from self.call_async(session, self.match_path(match_id), cache_file=self.match_cache_file(match_id)))
+        return (yield from self.call_async(session, self.match_path(match_id), cache_file=self.match_cache_file(match_id)))
 
     def matchlist_path(self, summoner_id):
         return '/api/lol/na/v2.2/matchlist/by-summoner/%s' % summoner_id
@@ -209,9 +209,8 @@ class RiotAPI:
     @asyncio.coroutine
     def matchlist_async(self, session, summoner_id):
         """Return the match list for the given summoner within a coroutine."""
-        with (yield from session.sem):
-            f = yield from self.call_async(session, self.matchlist_path(summoner_id), rankedQueues=SOLOQUEUE, seasons=CURRENT_SEASON)
-            return f.get('matches', [])
+        f = yield from self.call_async(session, self.matchlist_path(summoner_id), rankedQueues=SOLOQUEUE, seasons=CURRENT_SEASON)
+        return f.get('matches', [])
 
     @functools.lru_cache()
     def summoner_by_name(self, name):
@@ -234,6 +233,7 @@ class Summoner:
 
 
 class ClientSession(aiohttp.ClientSession):
+
     MAX_CONCURRENCY = 100
 
     def __init__(self):

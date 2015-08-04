@@ -82,38 +82,43 @@ class Lolfu:
             positions = dict([(m['matchId'], riot.position(m['lane'], m['role'], m['champion'])) for m in matchlist])
             champions = dict([(m['matchId'], m['champion']) for m in matchlist])
 
-            tasks = [self.api.match_async(session, m['matchId']) for m in matchlist if positions[m['matchId']]] # skip matches with no position
-            for f in asyncio.as_completed(tasks):
-                try:
-                    match = yield from f
-                except Exception as e:
-                    cherrypy.log(repr(e))
-                    continue
+            chunk = 10
+            ml = list(matchlist)
+            while ml:
 
-                match_id = match['matchId']
-                position = positions[match_id]
-                champion_id = champions[match_id]
+                tasks = [self.api.match_async(session, m['matchId']) for m in ml[:chunk] if positions[m['matchId']]] # skip matches with no position
+                del ml[:chunk]
+                for f in asyncio.as_completed(tasks):
+                    try:
+                        match = yield from f
+                    except Exception as e:
+                        cherrypy.log(repr(e))
+                        continue
 
-                # map participants to summoners
-                summoner_ids = {}
-                for pid in match['participantIdentities']:
-                    summoner_ids[pid['participantId']] = pid['player']['summonerId']
+                    match_id = match['matchId']
+                    position = positions[match_id]
+                    champion_id = champions[match_id]
 
-                # determine victory
-                victory = None
-                for participant in match['participants']:
-                    if summoner_id == summoner_ids[participant['participantId']]:
-                        victory = participant['stats']['winner']
-                        break
+                    # map participants to summoners
+                    summoner_ids = {}
+                    for pid in match['participantIdentities']:
+                        summoner_ids[pid['participantId']] = pid['player']['summonerId']
 
-                if victory is None:
-                    continue # skip inscrutable victory conditions
-                elif victory:
-                    wins.setdefault(position, {}).setdefault(champion_id, 0)
-                    wins[position][champion_id] += 1
-                else:
-                    losses.setdefault(position, {}).setdefault(champion_id, 0)
-                    losses[position][champion_id] += 1
+                    # determine victory
+                    victory = None
+                    for participant in match['participants']:
+                        if summoner_id == summoner_ids[participant['participantId']]:
+                            victory = participant['stats']['winner']
+                            break
+
+                    if victory is None:
+                        continue # skip inscrutable victory conditions
+                    elif victory:
+                        wins.setdefault(position, {}).setdefault(champion_id, 0)
+                        wins[position][champion_id] += 1
+                    else:
+                        losses.setdefault(position, {}).setdefault(champion_id, 0)
+                        losses[position][champion_id] += 1
 
         wins = {}
         losses = {}
