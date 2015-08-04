@@ -100,6 +100,9 @@ class Lolfu:
                         cherrypy.log(repr(e))
                         continue
 
+                    if match is None:
+                        continue # ignore nonexisting matches
+
                     match_id = match['matchId']
                     position = positions[match_id]
                     champion_id = champions[match_id]
