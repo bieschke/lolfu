@@ -62,10 +62,12 @@ class Lolfu:
             summoner = self.api.summoner_by_name(who)
             if summoner:
                 sc = self.summoner_perfomance(summoner.summoner_id)
-                climb_recs = [c for c in sc if c.sessions >= 10 and c.winrate_expected > .5][:5]
-                position_recs = one_rec_per_position(sc)
-                sc = sorted(sc, key=operator.attrgetter('sessions', 'winrate_expected'), reverse=True)
-                return self.html('summoner.html', summoner=summoner, climb_recs=climb_recs, position_recs=position_recs, sc=sc)
+                climb_recs = sorted([c for c in sc if c.winrate_summoner > 0.5],
+                    key=operator.attrgetter('winrate_pessimistic', 'winrate_expected', 'sessions'), reverse=True)[:5]
+                position_recs = one_rec_per_position(
+                    sorted(sc, key=operator.attrgetter('winrate_expected', 'sessions'), reverse=True))
+                return self.html('summoner.html', summoner=summoner, climb_recs=climb_recs, position_recs=position_recs,
+                    sc=sorted(sc, key=operator.attrgetter('sessions', 'winrate_expected'), reverse=True))
             else:
                 return self.html('index.html', error=who)
 
@@ -148,7 +150,7 @@ class Lolfu:
                 w = cw.get(champion_id, 0)
                 l = cl.get(champion_id, 0)
                 results.append(SummonerChampion(self.api, position, champion_id, w, l))
-        return sorted(results, key=operator.attrgetter('winrate_expected', 'sessions'), reverse=True)
+        return results
 
 
 class SummonerChampion:
@@ -160,12 +162,10 @@ class SummonerChampion:
         self.champion_image = api.champion_image(champion_id)
         self.champion_name = api.champion_name(champion_id)
         self.champion_key = api.champion_key(champion_id)
-        if (w + l) > 0:
-            self.winrate_summoner = w / float(w + l)
-        else:
-            self.winrate_summoner = None
+        self.winrate_summoner = w / float(w + l)
         k = max(10 - w - l, 0) # smooth over 10 matches
         self.winrate_expected = ((k * 0.5) + w) / (k + w + l)
+        self.winrate_pessimistic = ((k * 0.0) + w) / (k + w + l)
         self.wins = w
         self.losses = l
         self.sessions = w + l
