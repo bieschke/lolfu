@@ -12,6 +12,7 @@ import operator
 import os
 import os.path
 import riot
+import urllib.parse
 from mako.lookup import TemplateLookup
 
 
@@ -59,12 +60,14 @@ class Lolfu:
                 return []
 
             summoner = self.api.summoner_by_name(who)
-            sc = self.summoner_perfomance(summoner.summoner_id)
-            climb_recs = [c for c in sc if c.sessions >= 10 and c.winrate_expected > .5][:5]
-            position_recs = one_rec_per_position(sc)
-            sc = sorted(sc, key=operator.attrgetter('sessions', 'winrate_expected'), reverse=True)
-
-            return self.html('summoner.html', summoner=summoner, climb_recs=climb_recs, position_recs=position_recs, sc=sc)
+            if summoner:
+                sc = self.summoner_perfomance(summoner.summoner_id)
+                climb_recs = [c for c in sc if c.sessions >= 10 and c.winrate_expected > .5][:5]
+                position_recs = one_rec_per_position(sc)
+                sc = sorted(sc, key=operator.attrgetter('sessions', 'winrate_expected'), reverse=True)
+                return self.html('summoner.html', summoner=summoner, climb_recs=climb_recs, position_recs=position_recs, sc=sc)
+            else:
+                return self.html('index.html', error=who)
 
         return self.html('index.html')
 
@@ -72,6 +75,8 @@ class Lolfu:
     def summoner(self, who):
         """Return a webpage with details about the given summoner."""
         summoner = self.api.summoner_by_name(who)
+        if not summoner:
+            raise cherrypy.HTTPRedirect('/?who=' + urllib.parse.quote_plus(who), 307)
         raise cherrypy.HTTPRedirect('/' + summoner.standardized_name, 301)
 
     def summoner_perfomance(self, summoner_id):

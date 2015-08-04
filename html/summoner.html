@@ -4,6 +4,7 @@
 
 <%include file="navbar.html"/>
 
+% if sc:
 <div id="carousel-summoner" class="carousel slide" data-ride="carousel">
 
     <!-- Indicators -->
@@ -42,6 +43,7 @@
 </div>
 
 <br/>
+% endif
 
 % if climb_recs:
 <div class="row">
@@ -109,6 +111,7 @@
 </div>
 % endif
 
+% if sc:
 <div class="row">
     <div class="col-md-2">
         <p class="lead text-right">
@@ -145,3 +148,4 @@
         </table>
     </div>
 </div>
+% endif

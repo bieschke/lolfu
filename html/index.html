@@ -10,12 +10,25 @@
         <h1>Welcome to lolfu!</h1>
         <p>Want to find out which champion you should play in each position? Enter your summoner name and we'll make a recommendation that optimizes your solo queue climb.</p>
 
-        <form class="form-inline" method="get" action="summoner">
+        <form class="form-inline" method="get" action="/summoner">
             <div class="form-group">
                 <input type="text" class="form-control input-lg" placeholder="Summoner Name" name="who">
             </div>
             <button type="submit" class="btn btn-primary btn-lg">Go</button>
         </form>
+
+        % if error:
+        <p>
+            <div class="alert alert-info alert-dismissible" role="alert">
+                <span class="lead">
+                    <span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>
+                    <span class="sr-only">Error:</span>
+                    Could not find summoner <strong>${error | h}</strong>.
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </span>
+            </div>
+        </p>
+        % endif
 
     </div>
 

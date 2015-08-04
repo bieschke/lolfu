@@ -17,6 +17,7 @@ import os
 import os.path
 import requests
 import time
+import urllib.parse
 
 CURRENT_SEASON = 'SEASON2015'
 
@@ -204,18 +205,23 @@ class RiotAPI:
 
     def matchlist(self, summoner_id):
         """Return the match list for the given summoner."""
-        return self.call(self.matchlist_path(summoner_id), rankedQueues=SOLOQUEUE, seasons=CURRENT_SEASON).get('matches', [])
+        matchlist = self.call(self.matchlist_path(summoner_id), rankedQueues=SOLOQUEUE, seasons=CURRENT_SEASON)
+        if matchlist:
+            return matchlist.get('matches', [])
+        return []
 
     @asyncio.coroutine
     def matchlist_async(self, session, summoner_id):
         """Return the match list for the given summoner within a coroutine."""
-        f = yield from self.call_async(session, self.matchlist_path(summoner_id), rankedQueues=SOLOQUEUE, seasons=CURRENT_SEASON)
-        return f.get('matches', [])
+        matchlist = yield from self.call_async(session, self.matchlist_path(summoner_id), rankedQueues=SOLOQUEUE, seasons=CURRENT_SEASON)
+        if matchlist:
+            return matchlist.get('matches', [])
+        return []
 
     @functools.lru_cache()
     def summoner_by_name(self, name):
         """Return the summoner having the given name."""
-        summoner = self.call('/api/lol/na/v1.4/summoner/by-name/%s' % name)
+        summoner = self.call('/api/lol/na/v1.4/summoner/by-name/%s' % urllib.parse.quote_plus(name))
         if summoner:
             for standardized_name, dto in summoner.items():
                 summoner_id = dto['id']
