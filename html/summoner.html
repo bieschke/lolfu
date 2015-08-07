@@ -23,7 +23,7 @@ function refresh_loading_bar(call_interval) {
                 $('#loading').hide('blind');
             });
         } else {
-            setTimeout(refresh_loading_bar, call_interval * 2);
+            setTimeout(function() { refresh_loading_bar(Math.min(1000, call_interval * 1.5)); }, call_interval);
         }
     });
 }
