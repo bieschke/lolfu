@@ -64,7 +64,7 @@ class Lolfu:
         """Return a webpage with details about the given summoner."""
         summoner = self.api.summoner_by_name(who)
         if not summoner:
-            raise cherrypy.HTTPRedirect('/?who=' + urllib.parse.quote_plus(who), 307)
+            raise cherrypy.HTTPRedirect('/?who=' + urllib.parse.quote(who), 307)
         raise cherrypy.HTTPRedirect('/' + summoner.standardized_name, 301)
 
     @cherrypy.expose

@@ -229,7 +229,7 @@ class RiotAPI:
     @functools.lru_cache()
     def summoner_by_name(self, name):
         """Return the summoner having the given name."""
-        summoner = self.call('/api/lol/na/v1.4/summoner/by-name/%s' % urllib.parse.quote_plus(name))
+        summoner = self.call('/api/lol/na/v1.4/summoner/by-name/%s' % urllib.parse.quote(name))
         if summoner:
             for standardized_name, dto in summoner.items():
                 summoner_id = dto['id']
