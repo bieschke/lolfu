@@ -11,7 +11,9 @@ import cherrypy
 import operator
 import os
 import os.path
+import queue
 import riot
+import threading
 import urllib.parse
 from mako.lookup import TemplateLookup
 
@@ -35,6 +37,9 @@ class Lolfu:
 
     def __init__(self):
         self.api = riot.RiotAPI(cherrypy, DATA_DIR)
+        self.summoner_queue = queue.Queue()
+        for i in range(3):
+            DataCollectorThread(self.api, self.summoner_queue).start()
 
     def html(self, template, **kw):
         return lookup.get_template(template).render_unicode(**kw).encode('utf-8', 'replace')
@@ -46,7 +51,8 @@ class Lolfu:
         if who:
             summoner = self.api.summoner_by_name(who)
             if summoner:
-                # TODO need to queue match lookups in the background
+                # queue this summoner's data to be collected in a background thread
+                self.summoner_queue.put(summoner.summoner_id)
                 return self.html('summoner.html', summoner=summoner)
             else:
                 return self.html('index.html', error=who)
@@ -192,6 +198,35 @@ class Placeholder(SummonerChampion):
     def __init__(self, position):
         self.position = position
 
+
+class DataCollectorThread(threading.Thread):
+
+    def __init__(self, api, summoner_queue):
+        super(DataCollectorThread, self).__init__(name='DataCollector', daemon=True)
+        self.api = api
+        self.summoner_queue = summoner_queue
+
+    @asyncio.coroutine
+    def add_summoner(self, session, summoner_id):
+        for match in (yield from self.api.matchlist_async(session, summoner_id)):
+            if match:
+                yield from self.api.match_async(session, match['matchId'])
+
+    def process_summoner(self, summoner_id):
+        session = riot.ClientSession()
+        try:
+            asyncio.get_event_loop().run_until_complete(self.add_summoner(session, summoner_id))
+        finally:
+            session.close()
+
+    def run(self):
+        while True:
+            summoner_id = self.summoner_queue.get()
+            try:
+                self.process_summoner(summoner_id)
+            except Exception as e:
+                print('...', summoner_id, 'has error', repr(str(e)))
+            self.summoner_queue.task_done()
 
 
 if __name__ == '__main__':

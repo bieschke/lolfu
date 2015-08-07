@@ -13,7 +13,7 @@
 <div id="content"></div>
 
 <script>
-function refresh_loading_bar() {
+function refresh_loading_bar(call_interval) {
     $.getJSON("/summoner_check?summoner_id=${summoner.summoner_id}", function(data) {
         var percent = Math.round(100.0 * data.known / data.total);
         $('#loading_bar').text(data.known + '/' + data.total + ' matches loaded').width(percent + '%');
@@ -23,9 +23,9 @@ function refresh_loading_bar() {
                 $('#loading').hide('blind');
             });
         } else {
-            setTimeout(refresh_loading_bar, 100);
+            setTimeout(refresh_loading_bar, call_interval * 2);
         }
     });
 }
-refresh_loading_bar();
+refresh_loading_bar(100);
 </script>
