@@ -71,6 +71,9 @@ class RiotAPI:
         self.logger = logger
         self.cache_dir = cache_dir
 
+    def _cache_file_check(self, cache_file):
+        return os.path.exists(cache_file)
+
     def _cache_file_read(self, cache_file):
         if cache_file:
             try:
@@ -209,6 +212,11 @@ class RiotAPI:
         if matchlist:
             return matchlist.get('matches', [])
         return []
+
+    def matchlist_check(self, summoner_id):
+        """Return the count of the number of matches by the summoner already known and total as a tuple."""
+        matchlist = self.matchlist(summoner_id)
+        return (sum(self._cache_file_check(self.match_cache_file(m['matchId'])) for m in matchlist), len(matchlist))
 
     @asyncio.coroutine
     def matchlist_async(self, session, summoner_id):

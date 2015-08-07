@@ -44,30 +44,10 @@ class Lolfu:
         """Return either the app homepage or the summoner's homepage."""
 
         if who:
-
-            def one_rec_per_position(recs):
-                results = []
-                for p in riot.POSITIONS:
-                    for rec in recs:
-                        if rec.position == p:
-                            results.append(rec)
-                            break
-                    else:
-                        results.append(Placeholder(p))
-                for result in results:
-                    if not result.placeholder:
-                        return results
-                return []
-
             summoner = self.api.summoner_by_name(who)
             if summoner:
-                sc = self.summoner_perfomance(summoner.summoner_id)
-                climb_recs = sorted([c for c in sc if c.winrate_summoner > 0.5],
-                    key=operator.attrgetter('winrate_pessimistic', 'winrate_expected', 'sessions'), reverse=True)[:5]
-                position_recs = one_rec_per_position(
-                    sorted(sc, key=operator.attrgetter('winrate_expected', 'sessions'), reverse=True))
-                return self.html('summoner.html', summoner=summoner, climb_recs=climb_recs, position_recs=position_recs,
-                    sc=sorted(sc, key=operator.attrgetter('sessions', 'winrate_expected'), reverse=True))
+                # TODO need to queue match lookups in the background
+                return self.html('summoner.html', summoner=summoner)
             else:
                 return self.html('index.html', error=who)
 
@@ -81,6 +61,39 @@ class Lolfu:
             raise cherrypy.HTTPRedirect('/?who=' + urllib.parse.quote_plus(who), 307)
         raise cherrypy.HTTPRedirect('/' + summoner.standardized_name, 301)
 
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
+    def summoner_check(self, summoner_id):
+        known, total = self.api.matchlist_check(summoner_id)
+        return {'known':known, 'total':total}
+
+    @cherrypy.expose
+    def summoner_content(self, summoner_id):
+        summoner_id = int(summoner_id)
+
+        def one_rec_per_position(recs):
+            results = []
+            for p in riot.POSITIONS:
+                for rec in recs:
+                    if rec.position == p:
+                        results.append(rec)
+                        break
+                else:
+                    results.append(Placeholder(p))
+            for result in results:
+                if not result.placeholder:
+                    return results
+            return []
+
+        sc = self.summoner_perfomance(summoner_id)
+        climb_recs = sorted([c for c in sc if c.winrate_summoner > 0.5],
+            key=operator.attrgetter('winrate_pessimistic', 'sessions'), reverse=True)[:5]
+        position_recs = one_rec_per_position(
+            sorted(sc, key=operator.attrgetter('winrate_expected', 'sessions'), reverse=True))
+
+        return self.html('summoner_content.html', climb_recs=climb_recs, position_recs=position_recs,
+            sc=sorted(sc, key=operator.attrgetter('sessions', 'winrate_expected'), reverse=True))
+
     def summoner_perfomance(self, summoner_id):
         """Return a summary of how a summoner performs on all champions."""
 
@@ -89,12 +102,11 @@ class Lolfu:
             positions = dict([(m['matchId'], riot.position(m['lane'], m['role'], m['champion'])) for m in matchlist])
             champions = dict([(m['matchId'], m['champion']) for m in matchlist])
 
-            chunk = 10
             ml = list(matchlist)
             while ml:
 
-                tasks = [self.api.match_async(session, m['matchId']) for m in ml[:chunk] if positions[m['matchId']]] # skip matches with no position
-                del ml[:chunk]
+                tasks = [self.api.match_async(session, m['matchId']) for m in ml[:10]]
+                del ml[:10]
                 for f in asyncio.as_completed(tasks):
                     try:
                         match = yield from f
@@ -106,8 +118,11 @@ class Lolfu:
                         continue # ignore nonexisting matches
 
                     match_id = match['matchId']
-                    position = positions[match_id]
-                    champion_id = champions[match_id]
+                    position = positions.get(match_id)
+                    champion_id = champions.get(match_id)
+
+                    if position is None or champion_id is None:
+                        continue # ignore matches with no clear position or champion
 
                     # map participants to summoners
                     summoner_ids = {}
@@ -141,7 +156,7 @@ class Lolfu:
         finally:
             session.close()
 
-        # assemble results sorted by expected winrate
+        # assemble results
         results = []
         for position in riot.POSITIONS:
             cw = wins.get(position, {})

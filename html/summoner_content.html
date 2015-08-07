@@ -1,0 +1,145 @@
+% if sc:
+<div id="carousel-summoner" class="carousel slide" data-ride="carousel">
+
+    <!-- Indicators -->
+    <ol class="carousel-indicators">
+        <li data-target="#carousel-summoner" data-slide-to="0" class="active"></li>
+        <li data-target="#carousel-summoner" data-slide-to="1"></li>
+        <li data-target="#carousel-summoner" data-slide-to="2"></li>
+    </ol>
+
+    <!-- Wrapper for slides -->
+    <div class="carousel-inner" role="listbox">
+
+        % for i, c in enumerate(sc[:3]):
+        <div class="item${' active' if i==0 else ''}">
+            <img src="/static/img/splash/${c.champion_key}_0.jpg" alt="${c.champion_key}" class="center-block">
+            <div class="carousel-caption">
+                <h3 class="text-left">@${c.position.lower()}</h3>
+                <h1 class="text-left">${c.champion_name | h}</h1>
+                <h2 class="text-left">${c.wins} Wins ${c.losses} Losses</h2>
+            </div>
+        </div>
+        % endfor
+
+    </div>
+
+    <!-- Controls -->
+    <a class="left carousel-control" href="#carousel-summoner" role="button" data-slide="prev">
+        <span class="glyphicon glyphicon-chevron-left" aria-hidden="true"></span>
+        <span class="sr-only">Previous</span>
+    </a>
+    <a class="right carousel-control" href="#carousel-summoner" role="button" data-slide="next">
+        <span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>
+        <span class="sr-only">Next</span>
+    </a>
+
+</div>
+
+<br/>
+% endif
+
+% if climb_recs:
+<div class="row">
+
+    <div class="col-md-2">
+        <p class="lead text-right">
+            Optimal champion position combinations for climbing
+            <span class="glyphicon glyphicon-arrow-right" aria-hidden="true"></span>
+        </p>
+    </div>
+
+    % for rec in climb_recs:
+
+    <div class="col-md-2 text-center">
+        <div class="thumbnail well" style="padding: 0;">
+            <h2><small>${rec.position.capitalize()}</small></h2>
+            <img class="img-rounded" src="/static/img/champion/${rec.champion_image}" alt="${rec.champion_key}">
+            <div class="caption">
+                <h3>${rec.champion_name | h}</h3>
+                <h4>${rec.wins} Wins</h4>
+                <h4>${rec.losses} Losses</h4>
+                <h4>${round(100 * rec.winrate_summoner)}% Winrate</h4>
+            </div>
+        </div>
+    </div>
+
+    % endfor
+
+</div>
+% endif
+
+% if position_recs:
+<div class="row">
+
+    <div class="col-md-2">
+        <p class="lead text-right">
+            Strongest champion in each position
+            <span class="glyphicon glyphicon-arrow-right" aria-hidden="true"></span>
+        </p>
+    </div>
+
+    % for rec in position_recs:
+
+    <div class="col-md-2 text-center">
+        <div class="thumbnail well" style="padding: 0;">
+            % if not rec.placeholder:
+            <h2><small>${rec.position.capitalize()}</small></h2>
+            <img class="img-rounded" src="/static/img/champion/${rec.champion_image}" alt="${rec.champion_name}">
+            <div class="caption">
+                <h3>${rec.champion_name | h}</h3>
+                <h4>${rec.wins} Wins</h4>
+                <h4>${rec.losses} Losses</h4>
+                <h4>${round(100 * rec.winrate_summoner)}% Winrate</h4>
+            </div>
+            % else:
+            <h2><small>${rec.position.capitalize()}</small></h2>
+            <p class="lead">No dominant ${rec.position.lower()} champion.</p>
+            <p class="lead">More matches played on ${rec.position.lower()} champions will help find one.</p>
+            % endif
+        </div>
+    </div>
+
+    % endfor
+
+</div>
+% endif
+
+% if sc:
+<div class="row">
+    <div class="col-md-2">
+        <p class="lead text-right">
+            Details of all champion position combinations
+            <span class="glyphicon glyphicon-arrow-right" aria-hidden="true"></span>
+        </p>
+    </div>
+    <div class="col-md-10">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Position</th>
+                    <th>Champion</th>
+                    <th>Games</th>
+                    <th>Wins</th>
+                    <th>Losses</th>
+                    <th>Actual Winrate</th>
+                    <th>Expected Winrate</th>
+                </tr>
+            </thead>
+            <tbody>
+                % for c in sc:
+                <tr>
+                    <td>${c.position.capitalize()}</td>
+                    <td><img class="img-circle" style="height:1.5em;" src="/static/img/champion/${c.champion_image}"> ${c.champion_name | h}</td>
+                    <td>${c.sessions}</td>
+                    <td>${c.wins}</td>
+                    <td>${c.losses}</td>
+                    <td>${round(100 * c.winrate_summoner)}%</td>
+                    <td>${round(100 * c.winrate_expected)}%</td>
+                </tr>
+                % endfor
+            </tbody>
+        </table>
+    </div>
+</div>
+% endif
