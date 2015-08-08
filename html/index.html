@@ -2,44 +2,51 @@
 
 <%block name="title">lolfu</%block>
 
+<%block name="head">
+<style>
+html { 
+    background-attachment: fixed;
+    background-image: url('/static/img/splash/${random_splash}');
+    background-position: 85% 15%;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+</style>
+</%block>
+
 <div class="row">
 
-    <div id="index-search-box">
+    <div id="index-search-box" class="text-center">
 
-        <center>
+        <h1 class="text-over-img"><span class="lol">lol</span><span class="fu">fu</span></h1>
 
-            <h1><span class="lol">lol</span><span class="fu">fu</span></h1>
+        <p>
+        <form method="get" action="/summoner">
+            <div class="form-group">
+                <input type="text" class="form-control input-lg" placeholder="Summoner Name" name="who" autofocus>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg btn-block">Summoner Search</button>
+        </form>
+        </p>
 
-            <p>
-            <form method="get" action="/summoner">
-                <div class="form-group">
-                    <input type="text" class="form-control input-lg" placeholder="Summoner Name" name="who" autofocus>
-                </div>
-                <button type="submit" class="btn btn-primary btn-lg btn-block">Summoner Search</button>
-            </form>
-            </p>
-
-            % if error:
-            <p>
-                <div class="alert alert-info alert-dismissible" role="alert">
-                    <span>
-                        <span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>
-                        <span class="sr-only">Error:</span>
-                        Could not find summoner <strong>${error | h}</strong>.
-                        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                    </span>
-                </div>
-            </p>
-            % endif
-
-        </center>
+        % if error:
+        <p>
+            <div class="alert alert-info alert-dismissible" role="alert">
+                <span>
+                    <span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>
+                    <span class="sr-only">Error:</span>
+                    Could not find summoner <strong>${error | h}</strong>.
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </span>
+            </div>
+        </p>
+        % endif
 
     </div>
 
-    <img src="/static/img/splash/TahmKench_0.jpg" alt="Tahm Kench" class="img-responsive img-thumbnail"/>
-
 </div>
 
-<h6><small>lolfu isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or 
-anyone officially involved in producing or managing League of Legends. League of Legends and Riot Games are
-trademarks or registered trademarks of Riot Games, Inc. League of Legends &copy; Riot Games, Inc.</small></h6>
+<h6 class="text-over-img" style="position: absolute; bottom: 0; z-index: -1;"><small>lolfu isn't endorsed by
+Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing
+or managing League of Legends. League of Legends and Riot Games are trademarks or registered trademarks of Riot
+Games, Inc. League of Legends &copy; Riot Games, Inc.</small></h6>

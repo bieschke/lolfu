@@ -12,6 +12,7 @@ import operator
 import os
 import os.path
 import queue
+import random
 import riot
 import threading
 import urllib.parse
@@ -22,6 +23,7 @@ DATA_DIR = os.path.dirname(os.path.abspath(__file__)) + os.sep + 'data'
 HTML_DIR = os.path.dirname(os.path.abspath(__file__)) + os.sep + 'html'
 STATIC_DIR = os.path.dirname(os.path.abspath(__file__)) + os.sep + 'static'
 FONT_DIR = os.path.dirname(os.path.abspath(__file__)) + os.sep + 'static' + os.sep + 'fonts'
+FRONTPAGE_DIR = os.path.join(STATIC_DIR, 'img', 'splash', 'frontpage')
 TMP_DIR = os.path.dirname(os.path.abspath(__file__)) + os.sep + 'tmp'
 
 
@@ -37,12 +39,16 @@ class Lolfu:
 
     def __init__(self):
         self.api = riot.RiotAPI(cherrypy, DATA_DIR)
+        self.splashes = os.listdir(FRONTPAGE_DIR)
         self.summoner_queue = queue.Queue()
         for i in range(3):
             DataCollectorThread(self.api, self.summoner_queue).start()
 
     def html(self, template, **kw):
         return lookup.get_template(template).render_unicode(**kw).encode('utf-8', 'replace')
+
+    def random_splash(self):
+        return random.choice(self.splashes)
 
     @cherrypy.expose
     def index(self, who=None):
@@ -55,9 +61,9 @@ class Lolfu:
                 self.summoner_queue.put(summoner.summoner_id)
                 return self.html('summoner.html', summoner=summoner)
             else:
-                return self.html('index.html', error=who)
+                return self.html('index.html', random_splash=self.random_splash(), error=who)
 
-        return self.html('index.html')
+        return self.html('index.html', random_splash=self.random_splash())
 
     @cherrypy.expose
     def summoner(self, who):
