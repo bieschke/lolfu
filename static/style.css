@@ -2,3 +2,21 @@ body {
     padding-bottom: 20px;
     padding-top: 20px;
 }
+
+.lol {
+    color: #fd9;
+}
+
+.fu {
+    color: #9df;
+}
+
+#index-search-box {
+    background-color: rgba(0, 0, 0, .5);
+    border-radius: 20px;
+    float: left;
+    margin-left: 40px;
+    padding: 20px 40px 20px 40px;
+    position: absolute;
+    top: 40px;
+}

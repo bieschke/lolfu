@@ -3,46 +3,43 @@
 <%block name="title">lolfu</%block>
 
 <div class="row">
-<div class="col-md-8 col-md-offset-2">
 
-    <div class="jumbotron">
+    <div id="index-search-box">
 
-        <h1>Welcome to lolfu!</h1>
-        <p>Want to find out which champion you should play in each position? Enter your summoner name and we'll make a recommendation that optimizes your solo queue climb.</p>
+        <center>
 
-        <form class="form-inline" method="get" action="/summoner">
-            <div class="form-group">
-                <input type="text" class="form-control input-lg" placeholder="Summoner Name" name="who">
-            </div>
-            <button type="submit" class="btn btn-primary btn-lg">Go</button>
-        </form>
+            <h1><span class="lol">lol</span><span class="fu">fu</span></h1>
 
-        % if error:
-        <p>
-            <div class="alert alert-info alert-dismissible" role="alert">
-                <span class="lead">
-                    <span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>
-                    <span class="sr-only">Error:</span>
-                    Could not find summoner <strong>${error | h}</strong>.
-                    <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                </span>
-            </div>
-        </p>
-        % endif
+            <p>
+            <form method="get" action="/summoner">
+                <div class="form-group">
+                    <input type="text" class="form-control input-lg" placeholder="Summoner Name" name="who" autofocus>
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg btn-block">Summoner Search</button>
+            </form>
+            </p>
+
+            % if error:
+            <p>
+                <div class="alert alert-info alert-dismissible" role="alert">
+                    <span>
+                        <span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>
+                        <span class="sr-only">Error:</span>
+                        Could not find summoner <strong>${error | h}</strong>.
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    </span>
+                </div>
+            </p>
+            % endif
+
+        </center>
 
     </div>
 
-    <h3>How does this work?</h3>
-
-    <p class="lead">Most summoners are unaware of which champions in their champion pool are actually strongest. Lolfu computes the winrate for all champions you've played in all positions and informs you about which champions in your pool you should lean on to climb the solo queue ladder.
-
-    <p class="lead">Playing your highest winrate champions in each position greatly increases the likelihood of you climbing.</p>
-
-    <h3>Can I see how lolfu works?</h3>
-
-    <p class="lead">Lolfu is hosted at github <a href="https://github.com/bieschke/lolfu">here</a>.</p>
-
-    <h5><small>lolfu isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing League of Legends. League of Legends and Riot Games are trademarks or registered trademarks of Riot Games, Inc. League of Legends &copy; Riot Games, Inc.</small></h5>
+    <img src="/static/img/splash/TahmKench_0.jpg" alt="Tahm Kench" class="img-responsive img-thumbnail"/>
 
 </div>
-</div>
+
+<h6><small>lolfu isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or 
+anyone officially involved in producing or managing League of Legends. League of Legends and Riot Games are
+trademarks or registered trademarks of Riot Games, Inc. League of Legends &copy; Riot Games, Inc.</small></h6>
