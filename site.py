@@ -84,12 +84,7 @@ class Lolfu:
                     if rec.position == p:
                         results.append(rec)
                         break
-                else:
-                    results.append(Placeholder(p))
-            for result in results:
-                if not result.placeholder:
-                    return results
-            return []
+            return results
 
         sc = self.summoner_perfomance(summoner_id)
         climb_recs = sorted([c for c in sc if c.winrate_summoner > 0.5],
@@ -175,7 +170,6 @@ class Lolfu:
 
 
 class SummonerChampion:
-    placeholder = False
 
     def __init__(self, api, position, champion_id, w, l):
         self.position = position
@@ -190,13 +184,6 @@ class SummonerChampion:
         self.wins = w
         self.losses = l
         self.sessions = w + l
-
-
-class Placeholder(SummonerChampion):
-    placeholder = True
-
-    def __init__(self, position):
-        self.position = position
 
 
 class DataCollectorThread(threading.Thread):
