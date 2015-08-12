@@ -45,7 +45,7 @@ SUPPORT = 'SUPPORT'
 POSITIONS = (TOP, JUNGLE, MID, ADC, SUPPORT)
 
 
-def position(lane, role, champion_id):
+def position(lane, role):
     """Return the position for the given lane and role."""
     if lane in RIOT_TOP and role == RIOT_SOLO:
         return TOP

@@ -103,65 +103,45 @@ class Lolfu:
 
     def summoner_perfomance(self, summoner_id):
         """Return a summary of how a summoner performs on all champions."""
-
-        @asyncio.coroutine
-        def run():
-            positions = dict([(m['matchId'], riot.position(m['lane'], m['role'], m['champion'])) for m in matchlist])
-            champions = dict([(m['matchId'], m['champion']) for m in matchlist])
-
-            ml = list(matchlist)
-            while ml:
-
-                tasks = [self.api.match_async(session, m['matchId']) for m in ml[:10]]
-                del ml[:10]
-                for f in asyncio.as_completed(tasks):
-                    try:
-                        match = yield from f
-                    except Exception as e:
-                        cherrypy.log(repr(e))
-                        continue
-
-                    if match is None:
-                        continue # ignore nonexisting matches
-
-                    match_id = match['matchId']
-                    position = positions.get(match_id)
-                    champion_id = champions.get(match_id)
-
-                    if position is None or champion_id is None:
-                        continue # ignore matches with no clear position or champion
-
-                    # map participants to summoners
-                    summoner_ids = {}
-                    for pid in match['participantIdentities']:
-                        summoner_ids[pid['participantId']] = pid['player']['summonerId']
-
-                    # determine victory
-                    victory = None
-                    for participant in match['participants']:
-                        if summoner_id == summoner_ids[participant['participantId']]:
-                            victory = participant['stats']['winner']
-                            break
-
-                    if victory is None:
-                        continue # skip inscrutable victory conditions
-                    elif victory:
-                        wins.setdefault(position, {}).setdefault(champion_id, 0)
-                        wins[position][champion_id] += 1
-                    else:
-                        losses.setdefault(position, {}).setdefault(champion_id, 0)
-                        losses[position][champion_id] += 1
-
         wins = {}
         losses = {}
-        matchlist = self.api.matchlist(summoner_id)
 
-        # parallelize network calls for each match
-        session = riot.ClientSession()
-        try:
-            asyncio.get_event_loop().run_until_complete(run())
-        finally:
-            session.close()
+        for m in self.api.matchlist(summoner_id):
+            match_id = m['matchId']
+
+            match = self.api.match(match_id)
+            if match is None:
+                continue # ignore matches that don't exist
+
+            position = riot.position(m['lane'], m['role'])
+            if position is None:
+                continue # ignore matches with no clear position
+
+            champion_id = m['champion']
+            if champion_id is None:
+                continue # ignore matches with unidentified champions
+
+            # map participants to summoners
+            summoner_ids = {}
+            for pid in match['participantIdentities']:
+                summoner_ids[pid['participantId']] = pid['player']['summonerId']
+
+            # determine victory
+            victory = None
+            for participant in match['participants']:
+                if summoner_id == summoner_ids[participant['participantId']]:
+                    victory = participant['stats']['winner']
+                    break
+
+            # tally wins and losses
+            if victory is None:
+                continue # skip inscrutable victory conditions
+            elif victory:
+                wins.setdefault(position, {}).setdefault(champion_id, 0)
+                wins[position][champion_id] += 1
+            else:
+                losses.setdefault(position, {}).setdefault(champion_id, 0)
+                losses[position][champion_id] += 1
 
         # assemble results
         results = []
@@ -201,9 +181,8 @@ class DataCollectorThread(threading.Thread):
 
     @asyncio.coroutine
     def add_summoner(self, session, summoner_id):
-        for match in (yield from self.api.matchlist_async(session, summoner_id)):
-            if match:
-                yield from self.api.match_async(session, match['matchId'])
+        matchlist = self.api.matchlist(summoner_id)
+        yield from asyncio.wait([self.api.match_async(session, m['matchId']) for m in matchlist if m])
 
     def process_summoner(self, summoner_id):
         session = riot.ClientSession()
@@ -218,7 +197,7 @@ class DataCollectorThread(threading.Thread):
             try:
                 self.process_summoner(summoner_id)
             except Exception as e:
-                print('...', summoner_id, 'has error', repr(str(e)))
+                print('...summoner_id', summoner_id, 'error', repr(str(e)))
             self.summoner_queue.task_done()
 
 
