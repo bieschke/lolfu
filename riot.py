@@ -86,8 +86,11 @@ class RiotAPI:
     def _cache_file_write(self, cache_file, result):
         if cache_file and result:
             os.makedirs(os.path.dirname(cache_file), exist_ok=True)
-            with open(cache_file, 'x') as f:
-                json.dump(result, f)
+            try:
+                with open(cache_file, 'x') as f:
+                    json.dump(result, f)
+            except FileExistsError:
+                pass # okay if some other process has/is already cached this
 
     def call(self, path, cache_file=False, **params):
         """Execute a remote API call and return the JSON results."""
