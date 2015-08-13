@@ -9,6 +9,7 @@ Dependencies:
 <li>CherryPy 3.8.0 - http://www.cherrypy.org</li>
 <li>Mako 1.0.1 - http://www.makotemplates.org</li>
 <li>aiohttp 0.16.6 - https://aiohttp.readthedocs.org</li>
+<li>cachetools 1.0.3 - http://pythonhosted.org/cachetools/</li>
 
 <code>site.py</code> is a CherryPy application that allows one to lookup summoners and see
 what is the winrate optimal champions they should be playing in each role.

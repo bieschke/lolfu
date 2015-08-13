@@ -10,6 +10,7 @@ https://developer.riotgames.com/api/methods
 
 import asyncio
 import aiohttp
+import cachetools
 import configparser
 import functools
 import json
@@ -209,6 +210,7 @@ class RiotAPI:
     def matchlist_path(self, summoner_id):
         return '/api/lol/na/v2.2/matchlist/by-summoner/%s' % summoner_id
 
+    @cachetools.ttl_cache(ttl=60)
     def matchlist(self, summoner_id):
         """Return the match list for the given summoner."""
         matchlist = self.call(self.matchlist_path(summoner_id), rankedQueues=SOLOQUEUE, seasons=CURRENT_SEASON)

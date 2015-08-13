@@ -41,8 +41,7 @@ class Lolfu:
         self.api = riot.RiotAPI(cherrypy, DATA_DIR)
         self.splashes = os.listdir(FRONTPAGE_DIR)
         self.summoner_queue = queue.Queue()
-        for i in range(3):
-            DataCollectorThread(self.api, self.summoner_queue).start()
+        DataCollectorThread(self.api, self.summoner_queue).start()
 
     def html(self, template, **kw):
         return lookup.get_template(template).render_unicode(**kw).encode('utf-8', 'replace')
