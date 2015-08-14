@@ -1,8 +1,8 @@
 <script>
 // prevent empty searches from doing anything
-$('#search-form').submit(function(e) {
+$($('#search-form').submit(function(e) {
     if (!$.trim($('#search').val())) {
         e.preventDefault();
     }       
-});
+}));
 </script>
