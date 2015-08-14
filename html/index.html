@@ -22,9 +22,9 @@ html {
         <h1 class="text-over-img"><span class="lol">lol</span><span class="fu">fu</span></h1>
 
         <p>
-        <form method="get" action="/summoner">
+        <form id="search-form" method="get" action="/summoner">
             <div class="form-group">
-                <input type="text" class="form-control input-lg" placeholder="Summoner Name" name="who" autofocus>
+                <input id="search" type="text" class="form-control input-lg" placeholder="Summoner Name" name="who" autofocus>
             </div>
             <button type="submit" class="btn btn-primary btn-lg btn-block">Summoner Search</button>
         </form>
@@ -51,3 +51,5 @@ html {
 Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing
 or managing League of Legends. League of Legends and Riot Games are trademarks or registered trademarks of Riot
 Games, Inc. League of Legends &copy; Riot Games, Inc.</small></h6>
+
+<%include file="script_search.html"/>
