@@ -230,4 +230,5 @@ if __name__ == '__main__':
     # application configuration and start
     cherrypy.tree.mount(None, '/static', { '/' : { 'tools.staticdir.on': True, 'tools.staticdir.dir': STATIC_DIR }})
     cherrypy.tree.mount(None, '/fonts', { '/' : { 'tools.staticdir.on': True, 'tools.staticdir.dir': FONT_DIR }})
+    cherrypy.tree.mount(None, '/favicon.ico', { '/' : { 'tools.staticfile.on': True, 'tools.staticfile.filename': os.path.join(STATIC_DIR, 'favicon.ico') }})
     cherrypy.quickstart(Lolfu(), '/')
