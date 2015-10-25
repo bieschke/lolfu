@@ -107,7 +107,8 @@ class RiotAPI:
             start = time.time()
             response = requests.get(self.base_url + path, params=params)
             end = time.time()
-            self.logger.log('[%.0fms] %d %s' % (1000.0 * (end - start), response.status_code, path))
+            if self.logger:
+                self.logger.log('[%.0fms] %d %s' % (1000.0 * (end - start), response.status_code, path))
 
             # https://developer.riotgames.com/docs/response-codes
             # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
@@ -147,7 +148,8 @@ class RiotAPI:
                 response = yield from session.get(self.base_url + path, params=params)
                 try:
                     end = time.time()
-                    self.logger.log('[%.0fms] %d %s' % (1000.0 * (end - start), response.status, path))
+                    if self.logger:
+                        self.logger.log('[%.0fms] %d %s' % (1000.0 * (end - start), response.status, path))
                     # https://developer.riotgames.com/docs/response-codes
                     # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
                     if response.status == 404:
@@ -206,6 +208,11 @@ class RiotAPI:
     def match_async(self, session, match_id):
         """Return the requested match within a coroutine."""
         return (yield from self.call_async(session, self.match_path(match_id), cache_file=self.match_cache_file(match_id)))
+
+    @asyncio.coroutine
+    def match_timeline_nocache_async(self, session, match_id):
+        """Return the requested match within a coroutine."""
+        return (yield from self.call_async(session, self.match_path(match_id), includeTimeline='true'))
 
     def matchlist_path(self, summoner_id):
         return '/api/lol/na/v2.2/matchlist/by-summoner/%s' % summoner_id
