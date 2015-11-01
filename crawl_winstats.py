@@ -1,12 +1,16 @@
-###!/usr/bin/env python3.4
-"""Utility program to crawl all League of Legends matches.
+#!/usr/bin/env python3.4
+"""Utility program to crawl all League of Legends matches outputting
+statistics about wins and losses every minute. Output is formatted
+to CSV files on disk.
 """
 
 import asyncio
+import csv
 import riot
 import os
 import os.path
 import signal
+import sys
 
 
 DATA_DIR = os.path.dirname(os.path.abspath(__file__)) + os.sep + 'data'
@@ -151,44 +155,42 @@ class Crawler:
     @asyncio.coroutine
     def status(self):
         while True:
-            print('Matches:', len(self.matches), 'completed,', sum(self.matches.values()), 'ok,', len(self.summoners), 'summoners')
+            print('matches:', len(self.matches), 'observed,', sum(self.matches.values()), 'ok, by', len(self.summoners), 'summoners')
 
-            # building stats
-            building_stats = []
-            for key in set(self.winner_building_stats.keys()).union(set(self.loser_building_stats.keys())):
-                wins = self.winner_building_stats.get(key, 0)
-                losses = self.loser_building_stats.get(key, 0)
-                winp = 100.0 * wins / (wins + losses)
-                us_inhibs, us_towers, them_inhibs, them_towers = key
-                building_stats.append((winp, us_inhibs, us_towers, them_inhibs, them_towers, wins + losses))
-            for (winp, us_inhibs, us_towers, them_inhibs, them_towers, count) in sorted(building_stats, reverse=True):
-                print('%.0f%%' % winp, ':', us_inhibs, 'inhibs &', us_towers, 'towers vs.', them_inhibs, 'inhibs &', them_towers, 'towers @', count, 'samples')
+            with open('building_stats.csv', 'w', newline='') as f:
+                writer = csv.writer(f)
+                # building stats
+                building_stats = []
+                for key in set(self.winner_building_stats.keys()).union(set(self.loser_building_stats.keys())):
+                    wins = self.winner_building_stats.get(key, 0)
+                    losses = self.loser_building_stats.get(key, 0)
+                    winp = 100.0 * wins / (wins + losses)
+                    us_inhibs, us_towers, them_inhibs, them_towers = key
+                    writer.writerow((winp, wins + losses, wins, losses, us_inhibs, us_towers, them_inhibs, them_towers))
 
-            # kill stats
-            kill_stats = []
-            for key in set(self.winner_kill_stats.keys()).union(set(self.loser_kill_stats.keys())):
-                wins = self.winner_kill_stats.get(key, 0)
-                losses = self.loser_kill_stats.get(key, 0)
-                winp = 100.0 * wins / (wins + losses)
-                us_kills, them_kills = key
-                kill_stats.append((winp, us_kills, them_kills, wins + losses))
-            for (winp, us_kills, them_kills, count) in sorted(kill_stats, reverse=True):
-                print('%.0f%%' % winp, ':', us_kills, 'kills vs.', them_kills, 'kills @', count, 'samples')
+            with open('kill_stats.csv', 'w', newline='') as f:
+                writer = csv.writer(f)
+                # kill stats
+                kill_stats = []
+                for key in set(self.winner_kill_stats.keys()).union(set(self.loser_kill_stats.keys())):
+                    wins = self.winner_kill_stats.get(key, 0)
+                    losses = self.loser_kill_stats.get(key, 0)
+                    winp = 100.0 * wins / (wins + losses)
+                    us_kills, them_kills = key
+                    writer.writerow((winp, wins + losses, wins, losses, us_kills, them_kills))
 
-            # joint building and kill stats
-            joint_stats = []
-            for key in set(self.winner_joint_stats.keys()).union(set(self.loser_joint_stats.keys())):
-                wins = self.winner_joint_stats.get(key, 0)
-                losses = self.loser_joint_stats.get(key, 0)
-                winp = 100.0 * wins / (wins + losses)
-                us_inhibs, us_towers, us_kills, them_inhibs, them_towers, them_kills = key
-                joint_stats.append((winp, us_inhibs, us_towers, us_kills, them_inhibs, them_towers, them_kills, wins + losses))
-            for (winp, us_inhibs, us_towers, us_kills, them_inhibs, them_towers, them_kills, count) in sorted(joint_stats, reverse=True):
-                print('%.0f%%' % winp, ':', us_inhibs, 'inhibs &', us_towers, 'towers &', us_kills, 'kills vs.', them_inhibs, 'inhibs &', them_towers, 'towers &', them_kills, ' kills @', count, 'samples')
+            with open('joint_stats.csv', 'w', newline='') as f:
+                writer = csv.writer(f)
+                # joint building and kill stats
+                joint_stats = []
+                for key in set(self.winner_joint_stats.keys()).union(set(self.loser_joint_stats.keys())):
+                    wins = self.winner_joint_stats.get(key, 0)
+                    losses = self.loser_joint_stats.get(key, 0)
+                    winp = 100.0 * wins / (wins + losses)
+                    us_inhibs, us_towers, us_kills, them_inhibs, them_towers, them_kills = key
+                    writer.writerow((winp, wins + losses, wins, losses, us_inhibs, us_towers, us_kills, them_inhibs, them_towers, them_kills))
 
             yield from asyncio.sleep(60)
-            print()
-            print()
 
     @asyncio.coroutine
     def run(self):
@@ -220,7 +222,7 @@ class Crawler:
             try:
                 match = yield from self.api.match_timeline_nocache_async(self.session, match_id)
             except Exception as e:
-                print('...', match_id, 'has error', repr(str(e)))
+                print('...', match_id, 'has error', repr(str(e)), file=sys.stderr)
             else:
                 if match is not None:
                     self.collect_stats(match)

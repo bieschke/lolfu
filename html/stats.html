@@ -1,0 +1,125 @@
+<%inherit file="base.html"/>
+
+<%block name="title">Stats</%block>
+
+<%include file="navbar.html"/>
+
+<div class="row">
+
+    <div class="col-md-4">
+
+        <div class="panel panel-primary">
+
+            <div class="panel-heading">
+                <h3 class="panel-title">Your Team</h3>
+            </div>
+
+            <div class="panel-body">
+                <span class="lead"><span id="your_kills">0</span> Kills</span>
+                <div class="btn-group" role="group">
+                    <button type="button" id="your_kill_plus" class="btn btn-primary">
+                        <span class="glyphicon glyphicon-plus"></span>
+                    </button>
+                    <button type="button" id="your_kill_minus" class="btn btn-primary">
+                        <span class="glyphicon glyphicon-minus"></span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="panel panel-primary">
+
+            <div class="panel-heading">
+                <h3 class="panel-title">Their Team</h3>
+            </div>
+
+            <div class="panel-body">
+                <span class="lead"><span id="their_kills">0</span> Kills</span>
+                <div class="btn-group" role="group">
+                    <button type="button" id="their_kill_plus" class="btn btn-primary">
+                        <span class="glyphicon glyphicon-plus"></span>
+                    </button>
+                    <button type="button" id="their_kill_minus" class="btn btn-primary">
+                        <span class="glyphicon glyphicon-minus"></span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="col-md-8">
+
+        <div class="well well-lg">
+
+            <h1>Win Likelihood: <span class="win_percent"></span>%</h1>
+
+            <p class="lead">
+            The likelihood of winning a game where your team has <span class="your_kills"></span> kills
+            and the opposing team has <span class="their_kills"></span> kills is <span class="win_percent"></span>%.
+            There have been <span id="wins"></span> victories and <span id="losses"></span> losses across
+            <span id="matches"></span> matches where this was the case.
+            </p>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+<%include file="kill_stats.js"/>
+
+function update() {
+    // extract kill counts from the page text
+    var your = parseInt($('#your_kills').text());
+    var their = parseInt($('#their_kills').text());
+    // lookup stats for these kill counts
+    var wins = 0;
+    var losses = 0;
+    var key = "[" + your + "," + their + "]";
+    if (key in stats) {
+        wins = stats[key][0];
+        losses = stats[key][1];
+    }
+    // calculate win percentage
+    var matches = wins + losses;
+    var winp = 50;
+    if (matches > 0) {
+        winp = Math.round(100 * wins / matches);
+    }
+    // lastly update text on the page
+    $('.your_kills').text(your);
+    $('.their_kills').text(their);
+    $('#wins').text(wins);
+    $('#losses').text(losses);
+    $('#matches').text(matches);
+    $('.win_percent').text(winp);
+};
+
+$('#your_kill_plus').click(function() {
+    $('#your_kills').text(parseInt($('#your_kills').text()) + 1);
+    update();
+});
+
+$('#your_kill_minus').click(function() {
+    $('#your_kills').text(Math.max(parseInt($('#your_kills').text()) - 1, 0));
+    update();
+});
+
+$('#their_kill_plus').click(function() {
+    $('#their_kills').text(parseInt($('#their_kills').text()) + 1);
+    update();
+});
+
+$('#their_kill_minus').click(function() {
+    $('#their_kills').text(Math.max(parseInt($('#their_kills').text()) - 1, 0));
+    update();
+});
+
+update();
+
+</script>

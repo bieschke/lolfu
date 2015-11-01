@@ -65,6 +65,10 @@ class Lolfu:
         return self.html('index.html', random_splash=self.random_splash())
 
     @cherrypy.expose
+    def stats(self):
+        return self.html('stats.html')
+
+    @cherrypy.expose
     def summoner(self, who):
         """Return a webpage with details about the given summoner."""
         summoner = self.api.summoner_by_name(who)
