@@ -8,6 +8,73 @@
 
     <div class="col-md-4">
 
+        <div class="well well-lg">
+
+            <h2>Your likelihood to win based off both towers and kills is <span class="joint_win_percent">50</span>%.</h2>
+
+            <p class="lead">
+            The likelihood of winning a game where your team has <span class="your_inhibs">?</span> inhibitors,
+            <span class="your_towers"></span> towers, and <span class="your_kills">?</span> kills while the opposing
+            team has <span class="their_inhibs">?</span> inhibitors, <span class="their_towers">?</span> towers, and
+            <span class="their_kills">?</span> kills is <span class="joint_win_percent">50</span>%.
+            </p>
+
+            <p class="lead">
+            There have been <span id="joint_wins">?</span> victories and <span id="joint_losses">?</span> losses across
+            <span id="joint_matches">?</span> matches where this was the case.
+            </p>
+
+        </div>
+
+    </div>
+
+    <div class="col-md-4">
+
+        <div class="well well-lg">
+
+            <h2>Your likelihood to win based off towers only <span class="tower_win_percent">50</span>%.</h2>
+
+            <p class="lead">
+            The likelihood of winning a game where your team has <span class="your_inhibs">?</span> inhibitors
+            and <span class="your_towers">?</span> towers while the opposing team has <span class="their_inhibs">?</span>
+            inhibitors and <span class="their_towers">?</span> towers is <span class="tower_win_percent">50</span>%.
+            </p>
+
+            <p class="lead">
+            There have been <span id="tower_wins">?</span> victories and <span id="tower_losses">?</span> losses across
+            <span id="tower_matches">?</span> matches where this was the case.
+            </p>
+
+        </div>
+
+    </div>
+
+    <div class="col-md-4">
+
+        <div class="well well-lg">
+
+            <h2>Your likelihood to win based off kills only <span class="kill_win_percent">50</span>%.</h2>
+
+            <p class="lead">
+            The likelihood of winning a game where your team has <span class="your_kills">?</span> kills
+            while the opposing team has <span class="their_kills">?</span> kills is <span class="kill_win_percent">50</span>%.
+            </p>
+
+            <p class="lead">
+            There have been <span id="kill_wins">?</span> victories and <span id="kill_losses">?</span> losses across
+            <span id="kill_matches">?</span> matches where this was the case.
+            </p>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div class="row">
+
+    <div class="col-md-6">
+
         <div class="panel panel-primary">
 
             <div class="panel-heading">
@@ -54,6 +121,10 @@
 
         </div>
 
+    </div>
+
+    <div class="col-md-6">
+
         <div class="panel panel-primary">
 
             <div class="panel-heading">
@@ -97,61 +168,6 @@
                 <span class="lead" style="margin-left:0.5em;"><span id="their_kills">0</span> Kills</span>
 
             </div>
-
-        </div>
-
-    </div>
-
-    <div class="col-md-8">
-
-        <div class="well well-lg">
-
-            <h1>Win Likelihood: <span class="joint_win_percent"></span>%</h1>
-
-            <p class="lead">
-            The likelihood of winning a game where your team has <span class="your_inhibs"></span> inhibitors,
-            <span class="your_towers"></span> towers, and <span class="your_kills"></span> kills while the opposing
-            team has <span class="their_inhibs"></span> inhibitors, <span class="their_towers"></span> towers, and
-            <span class="their_kills"></span> kills is <span class="joint_win_percent"></span>%.
-            </p>
-
-            <p class="lead">
-            There have been <span id="joint_wins"></span> victories and <span id="joint_losses"></span> losses across
-            <span id="joint_matches"></span> matches where this was the case.
-            </p>
-
-        </div>
-
-        <div class="well well-lg">
-
-            <h1>Win Likelihood: <span class="tower_win_percent"></span>%</h1>
-
-            <p class="lead">
-            The likelihood of winning a game where your team has <span class="your_inhibs"></span> inhibitors
-            and <span class="your_towers"></span> towers while the opposing team has <span class="their_inhibs"></span>
-            inhibitors and <span class="their_towers"></span> towers is <span class="tower_win_percent"></span>%.
-            </p>
-
-            <p class="lead">
-            There have been <span id="tower_wins"></span> victories and <span id="tower_losses"></span> losses across
-            <span id="tower_matches"></span> matches where this was the case.
-            </p>
-
-        </div>
-
-        <div class="well well-lg">
-
-            <h1>Win Likelihood: <span class="kill_win_percent"></span>%</h1>
-
-            <p class="lead">
-            The likelihood of winning a game where your team has <span class="your_kills"></span> kills
-            while the opposing team has <span class="their_kills"></span> kills is <span class="kill_win_percent"></span>%.
-            </p>
-
-            <p class="lead">
-            There have been <span id="kill_wins"></span> victories and <span id="kill_losses"></span> losses across
-            <span id="kill_matches"></span> matches where this was the case.
-            </p>
 
         </div>
 
@@ -244,7 +260,7 @@ $('#your_inhib_plus').click(function() {
 });
 
 $('#your_inhib_minus').click(function() {
-    $('#your_inhibs').text(parseInt($('#your_inhibs').text()) - 1);
+    $('#your_inhibs').text(Math.max(parseInt($('#your_inhibs').text()) - 1, 0));
     update_stats();
 });
 
@@ -254,7 +270,7 @@ $('#your_tower_plus').click(function() {
 });
 
 $('#your_tower_minus').click(function() {
-    $('#your_towers').text(parseInt($('#your_towers').text()) - 1);
+    $('#your_towers').text(Math.max(parseInt($('#your_towers').text()) - 1, 0));
     update_stats();
 });
 
@@ -274,7 +290,7 @@ $('#their_inhib_plus').click(function() {
 });
 
 $('#their_inhib_minus').click(function() {
-    $('#their_inhibs').text(parseInt($('#their_inhibs').text()) - 1);
+    $('#their_inhibs').text(Math.max(parseInt($('#their_inhibs').text()) - 1, 0));
     update_stats();
 });
 
@@ -284,7 +300,7 @@ $('#their_tower_plus').click(function() {
 });
 
 $('#their_tower_minus').click(function() {
-    $('#their_towers').text(parseInt($('#their_towers').text()) - 1);
+    $('#their_towers').text(Math.max(parseInt($('#their_towers').text()) - 1, 0));
     update_stats();
 });
 
