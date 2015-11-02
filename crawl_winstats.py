@@ -14,6 +14,7 @@ import sys
 
 
 DATA_DIR = os.path.dirname(os.path.abspath(__file__)) + os.sep + 'data'
+MIN_MATCHES = 100 # minimum number of matches to be included in output
 
 
 class Crawler:
@@ -76,6 +77,9 @@ class Crawler:
         last_timestamp = -1
         timeline = match.get('timeline')
         if timeline:
+            self.update_tower_stats(0, 0, 0, 0)
+            self.update_kill_stats(0, 0)
+            self.update_joint_stats(0, 0, 0, 0, 0, 0)
             for frame in timeline['frames']:
                 for event in frame.get('events', []):
                     timestamp = event['timestamp']
@@ -166,7 +170,8 @@ class Crawler:
                     losses = self.loser_tower_stats.get(key, 0)
                     winp = 100.0 * wins / (wins + losses)
                     us_inhibs, us_towers, them_inhibs, them_towers = key
-                    writer.writerow((winp, wins + losses, wins, losses, us_inhibs, us_towers, them_inhibs, them_towers))
+                    if (wins + losses) >= MIN_MATCHES:
+                        writer.writerow((wins, losses, us_inhibs, us_towers, them_inhibs, them_towers))
 
             with open('kill_stats.csv', 'w', newline='') as f:
                 writer = csv.writer(f)
@@ -177,7 +182,8 @@ class Crawler:
                     losses = self.loser_kill_stats.get(key, 0)
                     winp = 100.0 * wins / (wins + losses)
                     us_kills, them_kills = key
-                    writer.writerow((winp, wins + losses, wins, losses, us_kills, them_kills))
+                    if (wins + losses) >= MIN_MATCHES:
+                        writer.writerow((wins, losses, us_kills, them_kills))
 
             with open('joint_stats.csv', 'w', newline='') as f:
                 writer = csv.writer(f)
@@ -188,7 +194,8 @@ class Crawler:
                     losses = self.loser_joint_stats.get(key, 0)
                     winp = 100.0 * wins / (wins + losses)
                     us_inhibs, us_towers, us_kills, them_inhibs, them_towers, them_kills = key
-                    writer.writerow((winp, wins + losses, wins, losses, us_inhibs, us_towers, us_kills, them_inhibs, them_towers, them_kills))
+                    if (wins + losses) >= MIN_MATCHES:
+                        writer.writerow((wins, losses, us_inhibs, us_towers, us_kills, them_inhibs, them_towers, them_kills))
 
             yield from asyncio.sleep(60)
 

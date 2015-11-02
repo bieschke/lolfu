@@ -8,15 +8,15 @@
 
     <div class="col-md-4">
 
-        <div class="well well-lg">
+        <div id="jwell" class="well well-lg">
 
-            <h2>Your likelihood to win based off both towers and kills is <span class="joint_win_percent">50</span>%.</h2>
+            <h2>Your likelihood to win based on both towers and kills is <span class="joint_win_percent">?</span>%.</h2>
 
             <p class="lead">
             The likelihood of winning a game where your team has <span class="your_inhibs">?</span> inhibitors,
             <span class="your_towers"></span> towers, and <span class="your_kills">?</span> kills while the opposing
             team has <span class="their_inhibs">?</span> inhibitors, <span class="their_towers">?</span> towers, and
-            <span class="their_kills">?</span> kills is <span class="joint_win_percent">50</span>%.
+            <span class="their_kills">?</span> kills is <span class="joint_win_percent">?</span>%.
             </p>
 
             <p class="lead">
@@ -30,14 +30,14 @@
 
     <div class="col-md-4">
 
-        <div class="well well-lg">
+        <div id="twell" class="well well-lg">
 
-            <h2>Your likelihood to win based off towers is <span class="tower_win_percent">50</span>%.</h2>
+            <h2>Your likelihood to win based on towers is <span class="tower_win_percent">?</span>%.</h2>
 
             <p class="lead">
             The likelihood of winning a game where your team has <span class="your_inhibs">?</span> inhibitors
             and <span class="your_towers">?</span> towers while the opposing team has <span class="their_inhibs">?</span>
-            inhibitors and <span class="their_towers">?</span> towers is <span class="tower_win_percent">50</span>%.
+            inhibitors and <span class="their_towers">?</span> towers is <span class="tower_win_percent">?</span>%.
             </p>
 
             <p class="lead">
@@ -51,13 +51,13 @@
 
     <div class="col-md-4">
 
-        <div class="well well-lg">
+        <div id="kwell" class="well well-lg">
 
-            <h2>Your likelihood to win based off kills is <span class="kill_win_percent">50</span>%.</h2>
+            <h2>Your likelihood to win based on kills is <span class="kill_win_percent">?</span>%.</h2>
 
             <p class="lead">
             The likelihood of winning a game where your team has <span class="your_kills">?</span> kills
-            while the opposing team has <span class="their_kills">?</span> kills is <span class="kill_win_percent">50</span>%.
+            while the opposing team has <span class="their_kills">?</span> kills is <span class="kill_win_percent">?</span>%.
             </p>
 
             <p class="lead">
@@ -200,7 +200,7 @@ function update_stats() {
         jlosses = joint_stats[keyj][1];
     }
     var jmatches = jwins + jlosses;
-    var jwinp = 50;
+    var jwinp = null;
     if (jmatches > 0) {
         jwinp = Math.round(100 * jwins / jmatches);
     }
@@ -214,7 +214,7 @@ function update_stats() {
         tlosses = tower_stats[keyt][1];
     }
     var tmatches = twins + tlosses;
-    var twinp = 50;
+    var twinp = null;
     if (tmatches > 0) {
         twinp = Math.round(100 * twins / tmatches);
     }
@@ -228,12 +228,25 @@ function update_stats() {
         klosses = kill_stats[keyk][1];
     }
     var kmatches = kwins + klosses;
-    var kwinp = 50;
+    var kwinp = null;
     if (kmatches > 0) {
         kwinp = Math.round(100 * kwins / kmatches);
     }
 
-    // disable useless buttons
+    // disable useless plus buttons
+    function disable_plus_btn(btn, val, cap) {
+        if (val >= cap) {
+            $(btn).addClass('disabled').prop('disabled', true);
+        } else {
+            $(btn).removeClass('disabled').prop('disabled', false);
+        }
+    }
+    disable_plus_btn('#your_inhib_plus', youri, 3);
+    disable_plus_btn('#their_inhib_plus', theiri, 3);
+    disable_plus_btn('#your_tower_plus', yourt, 11);
+    disable_plus_btn('#their_tower_plus', theirt, 11);
+
+    // disable useless minus buttons
     function disable_minus_btn(btn, val) {
         if (val <= 0) {
             $(btn).addClass('disabled').prop('disabled', true);
@@ -258,15 +271,30 @@ function update_stats() {
     $('#joint_wins').text(jwins);
     $('#joint_losses').text(jlosses);
     $('#joint_matches').text(jmatches);
-    $('.joint_win_percent').text(jwinp);
+    if (jwinp === null) {
+        $('#jwell').hide();
+    } else {
+        $('.joint_win_percent').text(jwinp);
+        $('#jwell').show();
+    }
     $('#tower_wins').text(twins);
     $('#tower_losses').text(tlosses);
     $('#tower_matches').text(tmatches);
-    $('.tower_win_percent').text(twinp);
+    if (twinp === null) {
+        $('#twell').hide();
+    } else {
+        $('.tower_win_percent').text(twinp);
+        $('#twell').show();
+    }
     $('#kill_wins').text(kwins);
     $('#kill_losses').text(klosses);
     $('#kill_matches').text(kmatches);
-    $('.kill_win_percent').text(kwinp);
+    if (kwinp === null) {
+        $('#kwell').hide();
+    } else {
+        $('.kill_win_percent').text(kwinp);
+        $('#kwell').show();
+    }
 };
 
 // setup plus buttons
