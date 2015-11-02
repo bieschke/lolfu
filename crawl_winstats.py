@@ -23,22 +23,22 @@ class Crawler:
         self.session = session
         self.matches = {}
         self.summoners = set()
-        self.winner_building_stats = {}
-        self.loser_building_stats = {}
+        self.winner_tower_stats = {}
+        self.loser_tower_stats = {}
         self.winner_kill_stats = {}
         self.loser_kill_stats = {}
         self.winner_joint_stats = {}
         self.loser_joint_stats = {}
 
-    def update_building_stats(self, winner_inhibs, winner_towers, loser_inhibs, loser_towers):
+    def update_tower_stats(self, winner_inhibs, winner_towers, loser_inhibs, loser_towers):
         if winner_inhibs > 3 or loser_inhibs > 3:
             raise ValueError('%d inhibitors killed is too many' % max(winner_inhibs, loser_inhibs))
         if winner_towers > 11 or loser_towers > 11:
             raise ValueError('%d towers killed is too many' % max(winner_towers, loser_towers))
-        self.winner_building_stats.setdefault((winner_inhibs, winner_towers, loser_inhibs, loser_towers), 0)
-        self.winner_building_stats[winner_inhibs, winner_towers, loser_inhibs, loser_towers] += 1
-        self.loser_building_stats.setdefault((loser_inhibs, loser_towers, winner_inhibs, winner_towers), 0)
-        self.loser_building_stats[loser_inhibs, loser_towers, winner_inhibs, winner_towers] += 1
+        self.winner_tower_stats.setdefault((winner_inhibs, winner_towers, loser_inhibs, loser_towers), 0)
+        self.winner_tower_stats[winner_inhibs, winner_towers, loser_inhibs, loser_towers] += 1
+        self.loser_tower_stats.setdefault((loser_inhibs, loser_towers, winner_inhibs, winner_towers), 0)
+        self.loser_tower_stats[loser_inhibs, loser_towers, winner_inhibs, winner_towers] += 1
 
     def update_kill_stats(self, winner_kills, loser_kills):
         self.winner_kill_stats.setdefault((winner_kills, loser_kills), 0)
@@ -127,7 +127,7 @@ class Crawler:
                         else:
                             raise ValueError('Unknown building %r' % building_type)
 
-                        self.update_building_stats(sum([winner_bot_inhib, winner_mid_inhib, winner_top_inhib]), winner_towers,
+                        self.update_tower_stats(sum([winner_bot_inhib, winner_mid_inhib, winner_top_inhib]), winner_towers,
                             sum([loser_bot_inhib, loser_mid_inhib, loser_top_inhib]), loser_towers)
                         self.update_joint_stats(
                             sum([winner_bot_inhib, winner_mid_inhib, winner_top_inhib]), winner_towers, winner_kills,
@@ -153,17 +153,17 @@ class Crawler:
                         pass
 
     @asyncio.coroutine
-    def status(self):
+    def output(self):
         while True:
             print('matches:', len(self.matches), 'observed,', sum(self.matches.values()), 'ok, by', len(self.summoners), 'summoners')
 
-            with open('building_stats.csv', 'w', newline='') as f:
+            with open('tower_stats.csv', 'w', newline='') as f:
                 writer = csv.writer(f)
-                # building stats
-                building_stats = []
-                for key in set(self.winner_building_stats.keys()).union(set(self.loser_building_stats.keys())):
-                    wins = self.winner_building_stats.get(key, 0)
-                    losses = self.loser_building_stats.get(key, 0)
+                # tower stats
+                tower_stats = []
+                for key in set(self.winner_tower_stats.keys()).union(set(self.loser_tower_stats.keys())):
+                    wins = self.winner_tower_stats.get(key, 0)
+                    losses = self.loser_tower_stats.get(key, 0)
                     winp = 100.0 * wins / (wins + losses)
                     us_inhibs, us_towers, them_inhibs, them_towers = key
                     writer.writerow((winp, wins + losses, wins, losses, us_inhibs, us_towers, them_inhibs, them_towers))
@@ -181,7 +181,7 @@ class Crawler:
 
             with open('joint_stats.csv', 'w', newline='') as f:
                 writer = csv.writer(f)
-                # joint building and kill stats
+                # joint tower and kill stats
                 joint_stats = []
                 for key in set(self.winner_joint_stats.keys()).union(set(self.loser_joint_stats.keys())):
                     wins = self.winner_joint_stats.get(key, 0)
@@ -244,7 +244,7 @@ if __name__ == '__main__':
         loop.add_signal_handler(signal.SIGINT, loop.stop)
         loop.add_signal_handler(signal.SIGTERM, loop.stop)
         crawler = Crawler(session, riot.RiotAPI(None, DATA_DIR))
-        loop.create_task(crawler.status())
+        loop.create_task(crawler.output())
         loop.create_task(crawler.run())
         loop.run_forever()
     finally:
