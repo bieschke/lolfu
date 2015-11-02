@@ -38,6 +38,18 @@
                 </div>
                 <span class="lead" style="margin-left:0.5em;"><span id="your_towers">0</span> Towers</span>
 
+                <br/>
+
+                <div class="btn-group" role="group">
+                    <button type="button" id="your_kill_plus" class="btn btn-primary">
+                        <span class="glyphicon glyphicon-plus"></span>
+                    </button>
+                    <button type="button" id="your_kill_minus" class="btn btn-primary">
+                        <span class="glyphicon glyphicon-minus"></span>
+                    </button>
+                </div>
+                <span class="lead" style="margin-left:0.5em;"><span id="your_kills">0</span> Kills</span>
+
             </div>
 
         </div>
@@ -72,6 +84,18 @@
                 </div>
                 <span class="lead" style="margin-left:0.5em;"><span id="their_towers">0</span> Towers</span>
 
+                <br/>
+
+                <div class="btn-group" role="group">
+                    <button type="button" id="their_kill_plus" class="btn btn-primary">
+                        <span class="glyphicon glyphicon-plus"></span>
+                    </button>
+                    <button type="button" id="their_kill_minus" class="btn btn-primary">
+                        <span class="glyphicon glyphicon-minus"></span>
+                    </button>
+                </div>
+                <span class="lead" style="margin-left:0.5em;"><span id="their_kills">0</span> Kills</span>
+
             </div>
 
         </div>
@@ -87,143 +111,15 @@
             <p class="lead">
             The likelihood of winning a game where your team has <span class="your_inhibs"></span> inhibitors
             and <span class="your_towers"></span> towers while the opposing team has <span class="their_inhibs"></span>
-            inhibitors and <span class="their_towers"></span> towers is <span class="tower_win_percent"></span>%. There
-            have been <span id="tower_wins"></span> victories and <span id="tower_losses"></span> losses across
+            inhibitors and <span class="their_towers"></span> towers is <span class="tower_win_percent"></span>%.
+            </p>
+
+            <p class="lead">
+            There have been <span id="tower_wins"></span> victories and <span id="tower_losses"></span> losses across
             <span id="tower_matches"></span> matches where this was the case.
             </p>
 
         </div>
-
-    </div>
-
-</div>
-
-<script>
-
-<%include file="tower_stats.js"/>
-
-function update_tower_stats() {
-    // extract tower counts from the page text
-    var youri = parseInt($('#your_inhibs').text());
-    var yourt = parseInt($('#your_towers').text());
-    var theiri = parseInt($('#their_inhibs').text());
-    var theirt = parseInt($('#their_towers').text());
-    // lookup stats for these tower counts
-    var wins = 0;
-    var losses = 0;
-    var key = "[" + youri + "," + yourt + "," + theiri + "," + theirt + "]";
-    if (key in tower_stats) {
-        wins = tower_stats[key][0];
-        losses = tower_stats[key][1];
-    }
-    // calculate win percentage
-    var matches = wins + losses;
-    var winp = 50;
-    if (matches > 0) {
-        winp = Math.round(100 * wins / matches);
-    }
-    // lastly update text on the page
-    $('.your_inhibs').text(youri);
-    $('.your_towers').text(yourt);
-    $('.their_inhibs').text(theiri);
-    $('.their_towers').text(theirt);
-    $('#tower_wins').text(wins);
-    $('#tower_losses').text(losses);
-    $('#tower_matches').text(matches);
-    $('.tower_win_percent').text(winp);
-};
-
-$('#your_inhib_plus').click(function() {
-    $('#your_inhibs').text(parseInt($('#your_inhibs').text()) + 1);
-    update_tower_stats();
-});
-
-$('#your_inhib_minus').click(function() {
-    $('#your_inhibs').text(parseInt($('#your_inhibs').text()) - 1);
-    update_tower_stats();
-});
-
-$('#your_tower_plus').click(function() {
-    $('#your_towers').text(parseInt($('#your_towers').text()) + 1);
-    update_tower_stats();
-});
-
-$('#your_tower_minus').click(function() {
-    $('#your_towers').text(parseInt($('#your_towers').text()) - 1);
-    update_tower_stats();
-});
-
-$('#their_inhib_plus').click(function() {
-    $('#their_inhibs').text(parseInt($('#their_inhibs').text()) + 1);
-    update_tower_stats();
-});
-
-$('#their_inhib_minus').click(function() {
-    $('#their_inhibs').text(parseInt($('#their_inhibs').text()) - 1);
-    update_tower_stats();
-});
-
-$('#their_tower_plus').click(function() {
-    $('#their_towers').text(parseInt($('#their_towers').text()) + 1);
-    update_tower_stats();
-});
-
-$('#their_tower_minus').click(function() {
-    $('#their_towers').text(parseInt($('#their_towers').text()) - 1);
-    update_tower_stats();
-});
-
-update_tower_stats();
-
-</script>
-
-<div class="row">
-
-    <div class="col-md-4">
-
-        <div class="panel panel-primary">
-
-            <div class="panel-heading">
-                <h3 class="panel-title">Your Team</h3>
-            </div>
-
-            <div class="panel-body">
-                <div class="btn-group" role="group">
-                    <button type="button" id="your_kill_plus" class="btn btn-primary">
-                        <span class="glyphicon glyphicon-plus"></span>
-                    </button>
-                    <button type="button" id="your_kill_minus" class="btn btn-primary">
-                        <span class="glyphicon glyphicon-minus"></span>
-                    </button>
-                </div>
-                <span class="lead" style="margin-left:0.5em;"><span id="your_kills">0</span> Kills</span>
-            </div>
-
-        </div>
-
-        <div class="panel panel-primary">
-
-            <div class="panel-heading">
-                <h3 class="panel-title">Their Team</h3>
-            </div>
-
-            <div class="panel-body">
-                <div class="btn-group" role="group">
-                    <button type="button" id="their_kill_plus" class="btn btn-primary">
-                        <span class="glyphicon glyphicon-plus"></span>
-                    </button>
-                    <button type="button" id="their_kill_minus" class="btn btn-primary">
-                        <span class="glyphicon glyphicon-minus"></span>
-                    </button>
-                </div>
-                <span class="lead" style="margin-left:0.5em;"><span id="their_kills">0</span> Kills</span>
-            </div>
-
-        </div>
-
-    </div>
-
-    <div class="col-md-8">
 
         <div class="well well-lg">
 
@@ -232,6 +128,9 @@ update_tower_stats();
             <p class="lead">
             The likelihood of winning a game where your team has <span class="your_kills"></span> kills
             while the opposing team has <span class="their_kills"></span> kills is <span class="kill_win_percent"></span>%.
+            </p>
+
+            <p class="lead">
             There have been <span id="kill_wins"></span> victories and <span id="kill_losses"></span> losses across
             <span id="kill_matches"></span> matches where this was the case.
             </p>
@@ -244,55 +143,124 @@ update_tower_stats();
 
 <script>
 
+<%include file="tower_stats.js"/>
 <%include file="kill_stats.js"/>
 
-function update_kill_stats() {
-    // extract kill counts from the page text
-    var your = parseInt($('#your_kills').text());
-    var their = parseInt($('#their_kills').text());
-    // lookup stats for these kill counts
-    var wins = 0;
-    var losses = 0;
-    var key = "[" + your + "," + their + "]";
-    if (key in kill_stats) {
-        wins = kill_stats[key][0];
-        losses = kill_stats[key][1];
+function update_stats() {
+
+    // extract counts from page text
+    var youri = parseInt($('#your_inhibs').text());
+    var yourt = parseInt($('#your_towers').text());
+    var yourk = parseInt($('#your_kills').text());
+    var theiri = parseInt($('#their_inhibs').text());
+    var theirt = parseInt($('#their_towers').text());
+    var theirk = parseInt($('#their_kills').text());
+
+    // lookup tower stats
+    var twins = 0;
+    var tlosses = 0;
+    var keyt = "[" + youri + "," + yourt + "," + theiri + "," + theirt + "]";
+    if (keyt in tower_stats) {
+        twins = tower_stats[keyt][0];
+        tlosses = tower_stats[keyt][1];
     }
-    // calculate win percentage
-    var matches = wins + losses;
-    var winp = 50;
-    if (matches > 0) {
-        winp = Math.round(100 * wins / matches);
+    var tmatches = twins + tlosses;
+    var twinp = 50;
+    if (tmatches > 0) {
+        twinp = Math.round(100 * twins / tmatches);
     }
+
+    // lookup kill stats
+    var kwins = 0;
+    var klosses = 0;
+    var keyk = "[" + yourk + "," + theirk + "]";
+    if (keyk in kill_stats) {
+        kwins = kill_stats[keyk][0];
+        klosses = kill_stats[keyk][1];
+    }
+    var kmatches = kwins + klosses;
+    var kwinp = 50;
+    if (kmatches > 0) {
+        kwinp = Math.round(100 * kwins / kmatches);
+    }
+
     // lastly update text on the page
-    $('.your_kills').text(your);
-    $('.their_kills').text(their);
-    $('#kill_wins').text(wins);
-    $('#kill_losses').text(losses);
-    $('#kill_matches').text(matches);
-    $('.kill_win_percent').text(winp);
+    $('.your_inhibs').text(youri);
+    $('.your_towers').text(yourt);
+    $('.your_kills').text(yourk);
+    $('.their_inhibs').text(theiri);
+    $('.their_towers').text(theirt);
+    $('.their_kills').text(theirk);
+    $('#tower_wins').text(twins);
+    $('#tower_losses').text(tlosses);
+    $('#tower_matches').text(tmatches);
+    $('.tower_win_percent').text(twinp);
+    $('#kill_wins').text(kwins);
+    $('#kill_losses').text(klosses);
+    $('#kill_matches').text(kmatches);
+    $('.kill_win_percent').text(kwinp);
 };
+
+$('#your_inhib_plus').click(function() {
+    $('#your_inhibs').text(parseInt($('#your_inhibs').text()) + 1);
+    update_stats();
+});
+
+$('#your_inhib_minus').click(function() {
+    $('#your_inhibs').text(parseInt($('#your_inhibs').text()) - 1);
+    update_stats();
+});
+
+$('#your_tower_plus').click(function() {
+    $('#your_towers').text(parseInt($('#your_towers').text()) + 1);
+    update_stats();
+});
+
+$('#your_tower_minus').click(function() {
+    $('#your_towers').text(parseInt($('#your_towers').text()) - 1);
+    update_stats();
+});
 
 $('#your_kill_plus').click(function() {
     $('#your_kills').text(parseInt($('#your_kills').text()) + 1);
-    update_kill_stats();
+    update_stats();
 });
 
 $('#your_kill_minus').click(function() {
     $('#your_kills').text(Math.max(parseInt($('#your_kills').text()) - 1, 0));
-    update_kill_stats();
+    update_stats();
+});
+
+$('#their_inhib_plus').click(function() {
+    $('#their_inhibs').text(parseInt($('#their_inhibs').text()) + 1);
+    update_stats();
+});
+
+$('#their_inhib_minus').click(function() {
+    $('#their_inhibs').text(parseInt($('#their_inhibs').text()) - 1);
+    update_stats();
+});
+
+$('#their_tower_plus').click(function() {
+    $('#their_towers').text(parseInt($('#their_towers').text()) + 1);
+    update_stats();
+});
+
+$('#their_tower_minus').click(function() {
+    $('#their_towers').text(parseInt($('#their_towers').text()) - 1);
+    update_stats();
 });
 
 $('#their_kill_plus').click(function() {
     $('#their_kills').text(parseInt($('#their_kills').text()) + 1);
-    update_kill_stats();
+    update_stats();
 });
 
 $('#their_kill_minus').click(function() {
     $('#their_kills').text(Math.max(parseInt($('#their_kills').text()) - 1, 0));
-    update_kill_stats();
+    update_stats();
 });
 
-update_kill_stats();
+update_stats();
 
 </script>
