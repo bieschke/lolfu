@@ -233,6 +233,21 @@ function update_stats() {
         kwinp = Math.round(100 * kwins / kmatches);
     }
 
+    // disable useless buttons
+    function disable_minus_btn(btn, val) {
+        if (val <= 0) {
+            $(btn).addClass('disabled').prop('disabled', true);
+        } else {
+            $(btn).removeClass('disabled').prop('disabled', false);
+        }
+    }
+    disable_minus_btn('#your_inhib_minus', youri);
+    disable_minus_btn('#your_tower_minus', yourt);
+    disable_minus_btn('#your_kill_minus', yourk);
+    disable_minus_btn('#their_inhib_minus', theiri);
+    disable_minus_btn('#their_tower_minus', theirt);
+    disable_minus_btn('#their_kill_minus', theirk);
+
     // lastly update text on the page
     $('.your_inhibs').text(youri);
     $('.your_towers').text(yourt);
@@ -254,66 +269,35 @@ function update_stats() {
     $('.kill_win_percent').text(kwinp);
 };
 
-$('#your_inhib_plus').click(function() {
-    $('#your_inhibs').text(parseInt($('#your_inhibs').text()) + 1);
-    update_stats();
-});
+// setup plus buttons
+function plus(btn, count) {
+    $(btn).click(function() {
+        $(count).text(parseInt($(count).text()) + 1);
+        update_stats();
+    });
+};
+plus('#your_inhib_plus', '#your_inhibs');
+plus('#your_tower_plus', '#your_towers');
+plus('#your_kill_plus', '#your_kills');
+plus('#their_inhib_plus', '#their_inhibs');
+plus('#their_tower_plus', '#their_towers');
+plus('#their_kill_plus', '#their_kills');
 
-$('#your_inhib_minus').click(function() {
-    $('#your_inhibs').text(Math.max(parseInt($('#your_inhibs').text()) - 1, 0));
-    update_stats();
-});
+// setup minus buttons
+function minus(btn, count) {
+    $(btn).click(function() {
+        $(count).text(Math.max(parseInt($(count).text()) - 1, 0));
+        update_stats();
+    });
+};
+minus('#your_inhib_minus', '#your_inhibs');
+minus('#your_tower_minus', '#your_towers');
+minus('#your_kill_minus', '#your_kills');
+minus('#their_inhib_minus', '#their_inhibs');
+minus('#their_tower_minus', '#their_towers');
+minus('#their_kill_minus', '#their_kills');
 
-$('#your_tower_plus').click(function() {
-    $('#your_towers').text(parseInt($('#your_towers').text()) + 1);
-    update_stats();
-});
-
-$('#your_tower_minus').click(function() {
-    $('#your_towers').text(Math.max(parseInt($('#your_towers').text()) - 1, 0));
-    update_stats();
-});
-
-$('#your_kill_plus').click(function() {
-    $('#your_kills').text(parseInt($('#your_kills').text()) + 1);
-    update_stats();
-});
-
-$('#your_kill_minus').click(function() {
-    $('#your_kills').text(Math.max(parseInt($('#your_kills').text()) - 1, 0));
-    update_stats();
-});
-
-$('#their_inhib_plus').click(function() {
-    $('#their_inhibs').text(parseInt($('#their_inhibs').text()) + 1);
-    update_stats();
-});
-
-$('#their_inhib_minus').click(function() {
-    $('#their_inhibs').text(Math.max(parseInt($('#their_inhibs').text()) - 1, 0));
-    update_stats();
-});
-
-$('#their_tower_plus').click(function() {
-    $('#their_towers').text(parseInt($('#their_towers').text()) + 1);
-    update_stats();
-});
-
-$('#their_tower_minus').click(function() {
-    $('#their_towers').text(Math.max(parseInt($('#their_towers').text()) - 1, 0));
-    update_stats();
-});
-
-$('#their_kill_plus').click(function() {
-    $('#their_kills').text(parseInt($('#their_kills').text()) + 1);
-    update_stats();
-});
-
-$('#their_kill_minus').click(function() {
-    $('#their_kills').text(Math.max(parseInt($('#their_kills').text()) - 1, 0));
-    update_stats();
-});
-
+// initialize
 update_stats();
 
 </script>
