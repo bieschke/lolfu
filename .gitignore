@@ -2,5 +2,6 @@
 riot.cfg
 tmp/
 *.csv
+*.js
 *.pyc
 *.swp
