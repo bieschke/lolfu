@@ -106,6 +106,24 @@
 
         <div class="well well-lg">
 
+            <h1>Win Likelihood: <span class="joint_win_percent"></span>%</h1>
+
+            <p class="lead">
+            The likelihood of winning a game where your team has <span class="your_inhibs"></span> inhibitors,
+            <span class="your_towers"></span> towers, and <span class="your_kills"></span> kills while the opposing
+            team has <span class="their_inhibs"></span> inhibitors, <span class="their_towers"></span> towers, and
+            <span class="their_kills"></span> kills is <span class="joint_win_percent"></span>%.
+            </p>
+
+            <p class="lead">
+            There have been <span id="joint_wins"></span> victories and <span id="joint_losses"></span> losses across
+            <span id="joint_matches"></span> matches where this was the case.
+            </p>
+
+        </div>
+
+        <div class="well well-lg">
+
             <h1>Win Likelihood: <span class="tower_win_percent"></span>%</h1>
 
             <p class="lead">
@@ -143,6 +161,7 @@
 
 <script>
 
+<%include file="joint_stats.js"/>
 <%include file="tower_stats.js"/>
 <%include file="kill_stats.js"/>
 
@@ -155,6 +174,20 @@ function update_stats() {
     var theiri = parseInt($('#their_inhibs').text());
     var theirt = parseInt($('#their_towers').text());
     var theirk = parseInt($('#their_kills').text());
+
+    // lookup joint stats
+    var jwins = 0;
+    var jlosses = 0;
+    var keyj = "[" + youri + "," + yourt + "," + yourk + "," + theiri + "," + theirt + "," + theirk + "]";
+    if (keyj in joint_stats) {
+        jwins = joint_stats[keyj][0];
+        jlosses = joint_stats[keyj][1];
+    }
+    var jmatches = jwins + jlosses;
+    var jwinp = 50;
+    if (jmatches > 0) {
+        jwinp = Math.round(100 * jwins / jmatches);
+    }
 
     // lookup tower stats
     var twins = 0;
@@ -191,6 +224,10 @@ function update_stats() {
     $('.their_inhibs').text(theiri);
     $('.their_towers').text(theirt);
     $('.their_kills').text(theirk);
+    $('#joint_wins').text(jwins);
+    $('#joint_losses').text(jlosses);
+    $('#joint_matches').text(jmatches);
+    $('.joint_win_percent').text(jwinp);
     $('#tower_wins').text(twins);
     $('#tower_losses').text(tlosses);
     $('#tower_matches').text(tmatches);
