@@ -8,6 +8,7 @@ http://leagueoflegends.com
 import asyncio
 import argparse
 import cherrypy
+import csv
 import operator
 import os
 import os.path
@@ -42,6 +43,21 @@ class Lolfu:
         self.splashes = os.listdir(FRONTPAGE_DIR)
         self.summoner_queue = queue.Queue()
         DataCollectorThread(self.api, self.summoner_queue).start()
+        # load kill stats from csv file
+        self.kill_stats = {}
+        with open('kill_stats.csv', newline='') as f:
+            for w, l, uk, tk in csv.reader(f):
+                self.kill_stats[tuple(int(x) for x in (uk, tk))] = tuple(int(x) for x in (w, l))
+        # load tower stats from csv file
+        self.tower_stats = {}
+        with open('tower_stats.csv', newline='') as f:
+            for w, l, ui, ut, ti, tt in csv.reader(f):
+                self.tower_stats[tuple(int(x) for x in (ui, ut, ti, tt))] = tuple(int(x) for x in (w, l))
+        # load joint stats from csv file
+        self.joint_stats = {}
+        with open('joint_stats.csv', newline='') as f:
+            for w, l, ui, ut, uk, ti, tt, tk in csv.reader(f):
+                self.joint_stats[tuple(int(x) for x in (ui, ut, uk, ti, tt, tk))] = tuple(int(x) for x in (w, l))
 
     def html(self, template, **kw):
         return lookup.get_template(template).render_unicode(**kw).encode('utf-8', 'replace')
@@ -67,6 +83,24 @@ class Lolfu:
     @cherrypy.expose
     def stats(self):
         return self.html('stats.html')
+
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
+    def stats_joint(self, youri, yourt, yourk, theiri, theirt, theirk):
+        stats = self.joint_stats.get(tuple(int(x) for x in (youri, yourt, yourk, theiri, theirt, theirk)), (0, 0))
+        return {'wins' : stats[0], 'losses' : stats[1]}
+
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
+    def stats_tower(self, youri, yourt, theiri, theirt):
+        stats = self.tower_stats.get(tuple(int(x) for x in (youri, yourt, theiri, theirt)), (0, 0))
+        return {'wins' : stats[0], 'losses' : stats[1]}
+
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
+    def stats_kill(self, yourk, theirk):
+        stats = self.kill_stats.get(tuple(int(x) for x in (yourk, theirk)), (0, 0))
+        return {'wins' : stats[0], 'losses' : stats[1]}
 
     @cherrypy.expose
     def summoner(self, who):
@@ -173,6 +207,10 @@ class SummonerChampion:
         self.wins = w
         self.losses = l
         self.sessions = w + l
+        self.cs10 = 0 # fixme
+        self.cs20 = 0 # fixme
+        self.first_tower = 0.5 # fixme
+        self.kda = 1.0 # fixme
 
 
 class DataCollectorThread(threading.Thread):

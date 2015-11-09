@@ -195,17 +195,19 @@
 
 <script>
 
-<%include file="joint_stats.js"/>
-<%include file="tower_stats.js"/>
-<%include file="kill_stats.js"/>
-
-function compute_stats(stats_lookup, key) {
+function compute_stats(url, data) {
     var wins = 0;
     var losses = 0;
-    if (key in stats_lookup) {
-        wins = stats_lookup[key][0];
-        losses = stats_lookup[key][1];
-    }
+    $.ajax({
+        dataType: "json",
+        url: url,
+        data: data,
+        success: function(data) {
+            wins = data.wins;
+            losses = data.losses;
+        },
+        async : false,
+    });
     var matches = wins + losses;
     var winp = null;
     if (matches > 0) {
@@ -214,8 +216,35 @@ function compute_stats(stats_lookup, key) {
     return [wins, losses, matches, winp];
 }
 
-function update_next(key, winp, target, txt) {
-    var winp_next = compute_stats(joint_stats, key)[3];
+function joint_stats(youri, yourt, yourk, theiri, theirt, theirk) {
+    return compute_stats('/stats_joint', {
+        'youri' : youri,
+        'yourt' : yourt,
+        'yourk' : yourk,
+        'theiri' : theiri,
+        'theirt' : theirt,
+        'theirk' : theirk,
+    });
+}
+
+function tower_stats(youri, yourt, theiri, theirt) {
+    return compute_stats('/stats_tower', {
+        'youri' : youri,
+        'yourt' : yourt,
+        'theiri' : theiri,
+        'theirt' : theirt,
+    });
+}
+
+function kill_stats(yourk, theirk) {
+    return compute_stats('/stats_kill', {
+        'yourk' : yourk,
+        'theirk' : theirk,
+    });
+}
+
+function update_next(youri, yourt, yourk, theiri, theirt, theirk, winp, target, txt) {
+    var winp_next = joint_stats(youri, yourt, yourk, theiri, theirt, theirk)[3];
     if (winp_next === null || winp === null) {
         $(target).hide();
     } else {
@@ -241,24 +270,21 @@ function update_stats() {
     var theirk = parseInt($('#their_kills').text());
 
     // lookup joint stats
-    var keyj = "[" + youri + "," + yourt + "," + yourk + "," + theiri + "," + theirt + "," + theirk + "]";
-    var j = compute_stats(joint_stats, keyj);
+    var j = joint_stats(youri, yourt, yourk, theiri, theirt, theirk);
     var jwins = j[0];
     var jlosses = j[1];
     var jmatches = j[2];
     var jwinp = j[3];
 
     // lookup tower stats
-    var keyt = "[" + youri + "," + yourt + "," + theiri + "," + theirt + "]";
-    var t = compute_stats(tower_stats, keyt);
+    var t = tower_stats(youri, yourt, theiri, theirt);
     var twins = t[0];
     var tlosses = t[1];
     var tmatches = t[2];
     var twinp = t[3];
 
     // lookup kill stats
-    var keyk = "[" + yourk + "," + theirk + "]";
-    var k = compute_stats(kill_stats, keyk);
+    var k = kill_stats(yourk, theirk);
     var kwins = k[0];
     var klosses = k[1];
     var kmatches = k[2];
@@ -285,12 +311,12 @@ function update_stats() {
     $('.their_inhibs').text(theiri);
     $('.their_towers').text(theirt);
     $('.their_kills').text(theirk);
-    update_next("[" + (youri+1) + "," + yourt + "," + yourk + "," + theiri + "," + theirt + "," + theirk + "]", jwinp, '#youri_next', 'Inhibitor');
-    update_next("[" + youri + "," + (yourt+1) + "," + yourk + "," + theiri + "," + theirt + "," + theirk + "]", jwinp, '#yourt_next', 'Tower');
-    update_next("[" + youri + "," + yourt + "," + (yourk+1) + "," + theiri + "," + theirt + "," + theirk + "]", jwinp, '#yourk_next', 'Kill');
-    update_next("[" + youri + "," + yourt + "," + yourk + "," + (theiri+1) + "," + theirt + "," + theirk + "]", jwinp, '#theiri_next', 'Inhibitor');
-    update_next("[" + youri + "," + yourt + "," + yourk + "," + theiri + "," + (theirt+1) + "," + theirk + "]", jwinp, '#theirt_next', 'Tower');
-    update_next("[" + youri + "," + yourt + "," + yourk + "," + theiri + "," + theirt + "," + (theirk+1) + "]", jwinp, '#theirk_next', 'Kill');
+    update_next(youri + 1, yourt, yourk, theiri, theirt, theirk, jwinp, '#youri_next', 'Inhibitor');
+    update_next(youri, yourt + 1, yourk, theiri, theirt, theirk, jwinp, '#yourt_next', 'Tower');
+    update_next(youri, yourt, yourk + 1, theiri, theirt, theirk, jwinp, '#yourk_next', 'Kill');
+    update_next(youri, yourt, yourk, theiri + 1, theirt, theirk, jwinp, '#theiri_next', 'Inhibitor');
+    update_next(youri, yourt, yourk, theiri, theirt + 1, theirk, jwinp, '#theirt_next', 'Tower');
+    update_next(youri, yourt, yourk, theiri, theirt, theirk + 1, jwinp, '#theirk_next', 'Kill');
     $('#joint_wins').text(jwins);
     $('#joint_losses').text(jlosses);
     $('#joint_matches').text(jmatches);
