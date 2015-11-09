@@ -1,3 +1,4 @@
+<%page args="active"/>
 <nav class="navbar navbar-default">
 
     <div class="container-fluid">
@@ -19,8 +20,9 @@
 
             <ul class="nav navbar-nav">
                 % if summoner:
-                <li class="active"><a href="/${summoner.standardized_name}">${summoner.name | h}</a></li>
+                <li${active == 'summoner' and ' class="active"' or ''}><a href="/${summoner.standardized_name}">${summoner.name | h}</a></li>
                 % endif
+                <li${active == 'stats' and ' class="active"' or ''}><a href="/stats">Stats</a></li>
             </ul>
 
             <form id="search-form" class="navbar-form navbar-right" role="search" method="get" action="/summoner">
