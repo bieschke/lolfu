@@ -45,17 +45,17 @@ class Lolfu:
         DataCollectorThread(self.api, self.summoner_queue).start()
         # load kill stats from csv file
         self.kill_stats = {}
-        with open('kill_stats.csv', newline='') as f:
+        with open(os.path.join(DATA_DIR, 'kill_stats.csv'), newline='') as f:
             for w, l, uk, tk in csv.reader(f):
                 self.kill_stats[tuple(int(x) for x in (uk, tk))] = tuple(int(x) for x in (w, l))
         # load tower stats from csv file
         self.tower_stats = {}
-        with open('tower_stats.csv', newline='') as f:
+        with open(os.path.join(DATA_DIR, 'tower_stats.csv'), newline='') as f:
             for w, l, ui, ut, ti, tt in csv.reader(f):
                 self.tower_stats[tuple(int(x) for x in (ui, ut, ti, tt))] = tuple(int(x) for x in (w, l))
         # load joint stats from csv file
         self.joint_stats = {}
-        with open('joint_stats.csv', newline='') as f:
+        with open(os.path.join(DATA_DIR, 'joint_stats.csv'), newline='') as f:
             for w, l, ui, ut, uk, ti, tt, tk in csv.reader(f):
                 self.joint_stats[tuple(int(x) for x in (ui, ut, uk, ti, tt, tk))] = tuple(int(x) for x in (w, l))
 
