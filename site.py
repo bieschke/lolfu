@@ -41,8 +41,12 @@ class Lolfu:
     def __init__(self):
         self.api = riot.RiotAPI(cherrypy, DATA_DIR)
         self.splashes = os.listdir(FRONTPAGE_DIR)
+
+        # summoner page init
         self.summoner_queue = queue.Queue()
         DataCollectorThread(self.api, self.summoner_queue).start()
+
+        # stats page init
         # load kill stats from csv file
         self.kill_stats = {}
         with open(os.path.join(DATA_DIR, 'kill_stats.csv'), newline='') as f:
@@ -58,6 +62,23 @@ class Lolfu:
         with open(os.path.join(DATA_DIR, 'joint_stats.csv'), newline='') as f:
             for w, l, ui, ut, uk, ti, tt, tk in csv.reader(f):
                 self.joint_stats[tuple(int(x) for x in (ui, ut, uk, ti, tt, tk))] = tuple(int(x) for x in (w, l))
+
+        # pool page init
+        self.weights = {}
+        self.matchups = {}
+        with open(os.path.join(DATA_DIR, 'matchup_stats.csv'), newline='') as f:
+            for row in csv.reader(f):
+                champion1, champion2, w, l = (int(x) for x in row)
+                self.matchups.setdefault(champion1, {})
+                self.matchups[champion1][champion2] = (w, l)
+                self.weights.setdefault(champion1, 0)
+                self.weights[champion1] += w + l
+                self.weights.setdefault(champion2, 0)
+                self.weights[champion2] += w + l
+        weight_total = sum(self.weights.values())
+        for key in self.weights:
+            self.weights[key] *= 10.0 # account for 10 summoners/game
+            self.weights[key] /= weight_total
 
     def html(self, template, **kw):
         return lookup.get_template(template).render_unicode(**kw).encode('utf-8', 'replace')
@@ -79,6 +100,92 @@ class Lolfu:
                 return self.html('index.html', random_splash=self.random_splash(), error=who)
 
         return self.html('index.html', random_splash=self.random_splash())
+
+    @cherrypy.expose
+    def pool(self):
+        champions = [(cid, self.api.champion_image(cid)) for cid in self.api.champion_ids()]
+        return self.html('pool.html', champions=sorted(champions, key=operator.itemgetter(1)))
+
+    @cherrypy.expose
+    def pool_content(self, **champions):
+
+        class Pool:
+            def __init__(self, denominator):
+                self.numerator = 0
+                self.denominator = denominator
+                self.favored = 0
+                self.unfavored = 0
+            @property
+            def weighted_winrate(self):
+                return 100.0 * self.numerator / self.denominator
+
+        class Champion(Pool):
+            def __init__(self, api, champion_id, denominator):
+                super(Champion, self).__init__(denominator)
+                self.champion_id = champion_id
+                self.champion_image = api.champion_image(champion_id)
+                self.champion_name = api.champion_name(champion_id)
+                self.champion_key = api.champion_key(champion_id)
+                self.counterpicks = 0
+
+        class Matchup:
+            def __init__(self, api, weights, champion_id, opponent_id, w, l):
+                self.weights = weights
+                self.champion_id = champion_id
+                self.champion_image = api.champion_image(champion_id)
+                self.champion_name = api.champion_name(champion_id)
+                self.champion_key = api.champion_key(champion_id)
+                self.opponent_id = opponent_id
+                self.opponent_image = api.champion_image(opponent_id)
+                self.opponent_name = api.champion_name(opponent_id)
+                self.opponent_key = api.champion_key(opponent_id)
+                self.wins = w
+                self.losses = l
+                self.winrate = 100.0 * self.wins / (self.wins + self.losses)
+            @property
+            def weight(self):
+                return self.weights.get(self.opponent_id, 0.0)
+
+        def pool_compute(champion_ids):
+            denominator = sum(self.weights.values())
+
+            pool_champions = [Champion(self.api, int(c), denominator) for c in champion_ids]
+
+            matchups = []
+            for champion in pool_champions:
+                for opponent_id in self.matchups.get(champion.champion_id, {}):
+                    wins, losses = self.matchups[champion.champion_id][opponent_id]
+                    matchup = Matchup(self.api, self.weights, champion.champion_id, opponent_id, wins, losses)
+                    champion.numerator += self.weights.get(opponent_id, 0.0) * wins / (wins + losses)
+                    if matchup.winrate > 50.0:
+                        champion.favored += 1
+                    elif matchup.winrate < 50.0:
+                        champion.unfavored += 1
+                    matchups.append(matchup)
+
+            pool_stats = Pool(denominator)
+            pool_matchups = []
+            for matchup in sorted(matchups, key=operator.attrgetter('winrate'), reverse=True):
+                if matchup.opponent_id not in [m.opponent_id for m in pool_matchups]:
+                    pool_stats.numerator += matchup.weight * matchup.wins / (matchup.wins + matchup.losses)
+                    if matchup.winrate > 50.0:
+                        pool_stats.favored += 1
+                    elif matchup.winrate < 50.0:
+                        pool_stats.unfavored += 1
+                    pool_matchups.append(matchup)
+                    for champion in pool_champions:
+                        if champion.champion_id == matchup.champion_id:
+                            champion.counterpicks += 1
+
+            return sorted(pool_champions, key=operator.attrgetter('weighted_winrate'), reverse=True), \
+                pool_stats, \
+                sorted(pool_matchups, key=operator.attrgetter('weight'), reverse=True)
+
+        # compute value of current champion pool
+        champion_ids = set(champions.values())
+        pool_champions, pool_stats, pool_matchups = pool_compute(champion_ids)
+
+        return self.html('pool_content.html', pool_stats=pool_stats, pool_champions=pool_champions, matchups=pool_matchups);
 
     @cherrypy.expose
     def stats(self):
@@ -207,10 +314,6 @@ class SummonerChampion:
         self.wins = w
         self.losses = l
         self.sessions = w + l
-        self.cs10 = 0 # fixme
-        self.cs20 = 0 # fixme
-        self.first_tower = 0.5 # fixme
-        self.kda = 1.0 # fixme
 
 
 class DataCollectorThread(threading.Thread):

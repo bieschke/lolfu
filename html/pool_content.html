@@ -1,0 +1,73 @@
+<div class="row" style="text-align:center;">
+    <h1>Champion Pool</h1>
+    <h4>
+        ${round(pool_stats.weighted_winrate)}% Weighted Winrate
+        | ${pool_stats.favored} Favored Matchups
+        | ${pool_stats.unfavored} Unfavored Matchups
+    </h4>
+</div>
+
+<div class="row">
+
+    % for i, c in enumerate(pool_champions):
+    <div class="col-md-2 col-sm-4 col-xs-12 text-center">
+        <div class="thumbnail well" style="padding: 0;">
+            <h3>${c.champion_name | h}</h3>
+            <img class="img-rounded" src="/static/img/champion/${c.champion_image}" alt="${c.champion_key}">
+            <div class="caption">
+                <h4>${round(c.weighted_winrate)}% Weighted Winrate</h4>
+                <h4>${c.favored} Favored Matchups</h4>
+                <h4>${c.unfavored} Unfavored Matchups</h4>
+                <h4>${c.counterpicks} Counterpicks</h4>
+                % if i == 0:
+                <h4><small>Best Blind Pick</small></h4>
+                % elif i == 1:
+                <h4><small>Primary Counterpick</small></h4>
+                % elif i == 2:
+                <h4><small>Secondary Counterpick</small></h4>
+                % elif i == 3:
+                <h4><small>Tertiary Counterpick</small></h4>
+                % endif
+            </div>
+        </div>
+    </div>
+    % endfor
+
+</div>
+
+<div class="row">
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <td>Opponent</td>
+                <td>Counterpick</td>
+                <td>Seen%</td>
+                <td>Wins</td>
+                <td>Losses</td>
+                <td>Win%</td>
+            </tr>
+        </thead>
+        <tbody>
+            % for m in matchups:
+            <%
+            color = 'yellow'
+            if m.winrate > 51.0:
+                color = 'green'
+            elif m.winrate < 49.0:
+                color = 'red'
+            %>
+            <tr>
+                <td><img class="img-circle" style="height:1.5em;" src="/static/img/champion/${m.opponent_image}"> ${m.opponent_name | h}</td>
+                <td><img class="img-circle" style="height:1.5em;" src="/static/img/champion/${m.champion_image}"> ${m.champion_name | h}</td>
+                <td>${round(100.0 * m.weight)}%</td>
+                <td>${m.wins}</td>
+                <td>${m.losses}</td>
+                <td><span style="color:${color};">${round(m.winrate)}%</span>
+                </td>
+            </tr>
+            % endfor
+        </tbody>
+    </table>
+
+</div>

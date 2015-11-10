@@ -1,0 +1,57 @@
+<%inherit file="base.html"/>
+
+<%block name="title">Champion Pool</%block>
+
+<%include file="navbar.html" args="active='pool'"/>
+
+% for champion_id, champion_image in champions:
+<img id="champion${champion_id}" class="champion_pick img-thumbnail" src="/static/img/champion/${champion_image}" height="60" width="60" data-champion="${champion_id}"/>
+% endfor
+
+<div id="content"></div>
+
+<script>
+
+var pool_champion_ids = {};
+var xhr = null;
+
+function pool_toggle() {
+    var champion_id = $(this).data('champion');
+
+    if (pool_champion_ids[champion_id]) {
+        pool_champion_ids[champion_id] = false;
+        $('#champion'+champion_id).css('border-color', '');
+    } else {
+        pool_champion_ids[champion_id] = true;
+        $('#champion'+champion_id).css('border-color', 'green');
+    }
+
+    pool_reload();
+}
+
+function pool_reload() {
+
+    var params = "";
+    for (var champion_id in pool_champion_ids) {
+        if (pool_champion_ids[champion_id]) {
+            if (params) params += '&';
+            params += 'champ' + champion_id + '=' + champion_id;
+        }
+    }
+
+    if (xhr != null) xhr.abort(); // cancel pending for fast clickers
+    if (params) {
+        var xhr = $.ajax({
+            url : "/pool_content?"+params,
+            success : function(data) {
+                $('#content').html(data);
+            }
+        });
+    } else {
+        $('#content').html('');
+    }
+}
+
+$('.champion_pick').click(pool_toggle);
+
+</script>

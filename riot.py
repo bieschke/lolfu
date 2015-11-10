@@ -115,8 +115,10 @@ class RiotAPI:
             if response.status_code == 404:
                 # API returns 404 when the requested entity doesn't exist
                 return None
-            elif response.status_code == 429:
+            elif response.status_code in (403, 429):
                 # retry after we're within our rate limit
+                # 429 is the expected "retry later" code
+                # 403 is expected after we've violated too many times and have been blacklisted
                 time.sleep(float(response.headers.get('Retry-After', retry_seconds)))
                 retry_seconds *= 2
                 continue
@@ -175,6 +177,10 @@ class RiotAPI:
         self._cache_file_write(cache_file, result)
         return result
 
+    def champion_ids(self):
+        """Return all champion ids."""
+        return set(int(key) for key in self.champions()['data'].keys())
+
     def champion_image(self, champion_id):
         """Return the image filename for the given champion."""
         return self.champions()['data'][str(champion_id)]['image']['full']
@@ -190,7 +196,10 @@ class RiotAPI:
     @functools.lru_cache(1)
     def champions(self):
         """Return all champions."""
-        return self.call('/api/lol/static-data/na/v1.2/champion', champData='image', dataById='true')
+        # fixme
+        import riot_static_data
+        return riot_static_data.static_data
+        #return self.call('/api/lol/static-data/na/v1.2/champion', champData='image', dataById='true')
 
     def match_cache_file(self, match_id):
         return os.path.join(self.cache_dir, 'match',
@@ -208,6 +217,11 @@ class RiotAPI:
     def match_async(self, session, match_id):
         """Return the requested match within a coroutine."""
         return (yield from self.call_async(session, self.match_path(match_id), cache_file=self.match_cache_file(match_id)))
+
+    @asyncio.coroutine
+    def match_nocache_async(self, session, match_id):
+        """Return the requested match within a coroutine."""
+        return (yield from self.call_async(session, self.match_path(match_id)))
 
     @asyncio.coroutine
     def match_timeline_nocache_async(self, session, match_id):
