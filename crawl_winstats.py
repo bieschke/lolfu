@@ -164,11 +164,9 @@ class Crawler:
             with open('tower_stats.csv', 'w', newline='') as f:
                 writer = csv.writer(f)
                 # tower stats
-                tower_stats = []
                 for key in set(self.winner_tower_stats.keys()).union(set(self.loser_tower_stats.keys())):
                     wins = self.winner_tower_stats.get(key, 0)
                     losses = self.loser_tower_stats.get(key, 0)
-                    winp = 100.0 * wins / (wins + losses)
                     us_inhibs, us_towers, them_inhibs, them_towers = key
                     if (wins + losses) >= MIN_MATCHES:
                         writer.writerow((wins, losses, us_inhibs, us_towers, them_inhibs, them_towers))
@@ -176,11 +174,9 @@ class Crawler:
             with open('kill_stats.csv', 'w', newline='') as f:
                 writer = csv.writer(f)
                 # kill stats
-                kill_stats = []
                 for key in set(self.winner_kill_stats.keys()).union(set(self.loser_kill_stats.keys())):
                     wins = self.winner_kill_stats.get(key, 0)
                     losses = self.loser_kill_stats.get(key, 0)
-                    winp = 100.0 * wins / (wins + losses)
                     us_kills, them_kills = key
                     if (wins + losses) >= MIN_MATCHES:
                         writer.writerow((wins, losses, us_kills, them_kills))
@@ -188,11 +184,9 @@ class Crawler:
             with open('joint_stats.csv', 'w', newline='') as f:
                 writer = csv.writer(f)
                 # joint tower and kill stats
-                joint_stats = []
                 for key in set(self.winner_joint_stats.keys()).union(set(self.loser_joint_stats.keys())):
                     wins = self.winner_joint_stats.get(key, 0)
                     losses = self.loser_joint_stats.get(key, 0)
-                    winp = 100.0 * wins / (wins + losses)
                     us_inhibs, us_towers, us_kills, them_inhibs, them_towers, them_kills = key
                     if (wins + losses) >= MIN_MATCHES:
                         writer.writerow((wins, losses, us_inhibs, us_towers, us_kills, them_inhibs, them_towers, them_kills))
