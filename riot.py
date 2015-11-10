@@ -196,10 +196,7 @@ class RiotAPI:
     @functools.lru_cache(1)
     def champions(self):
         """Return all champions."""
-        # fixme
-        import riot_static_data
-        return riot_static_data.static_data
-        #return self.call('/api/lol/static-data/na/v1.2/champion', champData='image', dataById='true')
+        return self.call('/api/lol/static-data/na/v1.2/champion', champData='image', dataById='true')
 
     def match_cache_file(self, match_id):
         return os.path.join(self.cache_dir, 'match',
