@@ -20,9 +20,9 @@ import requests
 import time
 import urllib.parse
 
-CURRENT_SEASON = 'SEASON2015'
+CURRENT_SEASON = 'SEASON2016'
 
-SOLOQUEUE = 'RANKED_SOLO_5x5'
+SOLOQUEUE = 'TEAM_BUILDER_DRAFT_RANKED_5x5,RANKED_SOLO_5x5'
 
 # Riot's lanes
 RIOT_TOP = ('TOP', )
