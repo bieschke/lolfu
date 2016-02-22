@@ -22,8 +22,6 @@ import urllib.parse
 
 CURRENT_SEASON = 'SEASON2016'
 
-SOLOQUEUE = 'TEAM_BUILDER_DRAFT_RANKED_5x5,RANKED_SOLO_5x5'
-
 # Riot's lanes
 RIOT_TOP = ('TOP', )
 RIOT_JUNGLE = ('JUNGLE', )
@@ -231,7 +229,7 @@ class RiotAPI:
     @cachetools.ttl_cache(ttl=60)
     def matchlist(self, summoner_id):
         """Return the match list for the given summoner."""
-        matchlist = self.call(self.matchlist_path(summoner_id), rankedQueues=SOLOQUEUE, seasons=CURRENT_SEASON)
+        matchlist = self.call(self.matchlist_path(summoner_id), seasons=CURRENT_SEASON)
         if matchlist:
             return matchlist.get('matches', [])
         return []
@@ -244,7 +242,7 @@ class RiotAPI:
     @asyncio.coroutine
     def matchlist_async(self, session, summoner_id):
         """Return the match list for the given summoner within a coroutine."""
-        matchlist = yield from self.call_async(session, self.matchlist_path(summoner_id), rankedQueues=SOLOQUEUE, seasons=CURRENT_SEASON)
+        matchlist = yield from self.call_async(session, self.matchlist_path(summoner_id), seasons=CURRENT_SEASON)
         if matchlist:
             return matchlist.get('matches', [])
         return []
