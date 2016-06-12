@@ -33,7 +33,9 @@ class Crawler:
         self.loser_stats[loser_champion_id, winner_champion_id] += 1
 
     def collect_stats(self, match):
-        match_id = match['matchId']
+        match_id = match.get('matchId')
+        if match_id is None:
+            return
 
         # determine the winning team
         winner_team_id = None
@@ -108,7 +110,7 @@ class Crawler:
             else:
                 if match is not None:
                     self.collect_stats(match)
-                    for pid in match['participantIdentities']:
+                    for pid in match.get('participantIdentities', []):
                         summoner_id = pid['player']['summonerId']
                         self.summoners.add(summoner_id)
                     self.matches[match_id] = True
