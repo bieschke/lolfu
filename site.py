@@ -236,13 +236,14 @@ class Lolfu:
                         break
             return results
 
-        sc = self.summoner_perfomance(summoner_id)
+        sc, position_stats = self.summoner_perfomance(summoner_id)
         climb_recs = sorted([c for c in sc if c.winrate_summoner > 0.5],
             key=operator.attrgetter('winrate_pessimistic', 'sessions'), reverse=True)[:5]
         position_recs = one_rec_per_position(
             sorted(sc, key=operator.attrgetter('winrate_expected', 'sessions'), reverse=True))
 
-        return self.html('summoner_content.html', climb_recs=climb_recs, position_recs=position_recs,
+        return self.html('summoner_content.html', climb_recs=climb_recs,
+            position_stats=position_stats, position_recs=position_recs,
             sc=sorted(sc, key=operator.attrgetter('sessions', 'winrate_expected'), reverse=True))
 
     def summoner_perfomance(self, summoner_id):
@@ -289,14 +290,21 @@ class Lolfu:
 
         # assemble results
         results = []
+        position_stats = []
         for position in riot.POSITIONS:
             cw = wins.get(position, {})
             cl = losses.get(position, {})
+            position_wins = sum(cw.values())
+            position_losses = sum(cl.values())
+            if position_wins + position_losses:
+                position_winrate = position_wins / (position_wins + position_losses)
+                position_stats.append((position, position_wins, position_losses, position_winrate))
             for champion_id in set(cw.keys()).union(cl.keys()):
                 w = cw.get(champion_id, 0)
                 l = cl.get(champion_id, 0)
                 results.append(SummonerChampion(self.api, position, champion_id, w, l))
-        return results
+
+        return results, position_stats
 
 
 class SummonerChampion:
