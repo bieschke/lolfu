@@ -228,126 +228,117 @@ class Lolfu:
     def summoner_content(self, summoner_id):
         summoner_id = int(summoner_id)
         matchlist = self.api.matchlist(summoner_id)
-        teammates = self.teammates(summoner_id, matchlist)
-        teams = self.teams(summoner_id, matchlist, teammates)
+        matches = self.matches(summoner_id, matchlist)
+        teams = self.teams(summoner_id, matches)
         return self.html('summoner_content.html', teams=teams)
 
-    def teammates(self, summoner_id, matchlist, game_min=10):
-        # compute counts of how many games this summoner has played with teammates
-        teammate_counts = {}
-        for m, match, position, champion_id, teammates in self.walk_matches(summoner_id, matchlist):
-            # increment the count for how may games this summoner has played with these teammates
-            for teammate in teammates:
-                teammate_counts[teammate] = teammate_counts.get(teammate, 0) + 1
-
-        # determine set of recurring teammates, anyone with N or more matches
-        return set(s for (s, count) in teammate_counts.items() if count >= game_min)
-
-    def teams(self, summoner_id, matchlist, teammates):
-        teams = []
-        for i in (1, 2, 3, 4, 5):
-            for team_summoners in itertools.combinations(teammates, i):
-                if summoner_id in (s.summoner_id for s in team_summoners):
-                    teams.append(Team(team_summoners, self.match_results(summoner_id, matchlist, set(team_summoners))))
-        return teams
-
-    def walk_matches(self, summoner_id, matchlist):
+    def matches(self, summoner_id, matchlist):
+        summoner_cache = {}
+        champion_cache = {}
+        matches = []
         for m in matchlist:
             match_id = m['matchId']
+            if match_id is None:
+                continue # skip bogus matches
             match = self.api.match(match_id)
-
             if match is None:
-                continue # ignore matches that don't exist
+                continue # skip matches that don't exist
+            matches.append(Match(self.api, match_id, summoner_id, match, summoner_cache, champion_cache))
+        return matches
 
-            position = riot.position(m['lane'], m['role'])
-            if position is None:
-                continue # ignore matches with no clear position
+    def teams(self, summoner_id, matches, game_min=10):
+        # compute counts of how many games this summoner has played with teammates
+        match_counts = {}
+        for match in matches:
+            for teammate in match.teammates:
+                match_counts[teammate] = match_counts.get(teammate, 0) + 1
 
-            champion_id = m['champion']
-            if champion_id is None:
-                continue # ignore matches with unidentified champions
+        # determine set of recurring teammates, anyone with N or more matches
+        recurring = set(s for (s, count) in match_counts.items() if s.summoner_id == summoner_id or count >= game_min)
 
-            # map participants to summoners
-            summoner_ids = {}
-            summoner_names = {}
-            for pid in match['participantIdentities']:
-                sid = pid['player']['summonerId']
-                summoner_ids[pid['participantId']] = sid
-                summoner_names[sid] = pid['player']['summonerName']
+        # return all iterations of recurring teammate combinations that include the summoner
+        teams = []
+        for i in (1, 2, 3, 4, 5):
+            for teammates in itertools.combinations(recurring, i):
+                if summoner_id in (s.summoner_id for s in teammates):
+                    teams.append(Team(teammates))
 
-            # map participants to teams
-            teams = {}
-            for p in match['participants']:
-                teams[p['participantId']] = p['teamId']
+        self.populate_team_stats(matches, teams)
 
-            # calculate which team is on this summoner's team
-            teammate_team_id = None
-            for participant_id, sid in summoner_ids.items():
-                if sid == summoner_id:
-                    teammate_team_id = teams[participant_id]
-                    break
-            else:
-                continue # ignore matches where we cannot determine team
+        return sorted([t for t in teams if t.match_count > game_min], key=operator.attrgetter('match_count'), reverse=True)
 
-            # calculate teammates for this match, include oneself
-            teammates = set(Summoner(sid, summoner_names[sid]) for (pid, sid) in summoner_ids.items() if teams[pid] == teammate_team_id)
-
-            yield m, match, position, champion_id, teammates
-
-    def match_results(self, summoner_id, matchlist, required_teammates):
-
-        # compute win and loss counts for position-champion combinations
-        wins = {}
-        losses = {}
-        for m, match, position, champion_id, teammates in self.walk_matches(summoner_id, matchlist):
-            if required_teammates.issubset(teammates):
-
-                # map participants to summoners
-                summoner_ids = {}
-                for pid in match['participantIdentities']:
-                    summoner_ids[pid['participantId']] = pid['player']['summonerId']
-
-                # determine victory
-                victory = None
-                for participant in match['participants']:
-                    if summoner_id == summoner_ids[participant['participantId']]:
-                        victory = participant['stats']['winner']
-                        break
-
-                # tally wins and losses
-                if victory is None:
-                    continue # skip inscrutable victory conditions
-                elif victory:
-                    wins.setdefault(position, {}).setdefault(champion_id, 0)
-                    wins[position][champion_id] += 1
-                else:
-                    losses.setdefault(position, {}).setdefault(champion_id, 0)
-                    losses[position][champion_id] += 1
-
-        # assemble results
-        results = []
-        for position in riot.POSITIONS:
-            cw = wins.get(position, {})
-            cl = losses.get(position, {})
-            for champion_id in set(cw.keys()).union(cl.keys()):
-                w = cw.get(champion_id, 0)
-                l = cl.get(champion_id, 0)
-                results.append(SummonerChampion(self.api, position, champion_id, w, l))
-
-        return sorted(results, key=operator.attrgetter('sessions', 'winrate_expected'), reverse=True)
+    def populate_team_stats(self, matches, teams):
+        for match in matches:
+            if match.victory is None:
+                continue # skip inscrutable victory conditions
+            for summoner in match.teammates:
+                summoner.victory(match.victory)
+            for team in teams:
+                # only accumulate stats if this team played this match
+                if team.summoners.issubset(match.teammates):
+                    team.victory(match.victory)
+                    for summoner in team.summoners:
+                        sid = summoner.summoner_id
+                        position = match.positions[sid]
+                        champion = match.champions[sid]
+                        if summoner and position and champion: # skip when data is uncertain
+                            team.summoner_champion_position(summoner, position, champion, match.victory)
 
 
-class Summoner:
+class Match:
 
-    def __init__(self, summoner_id, name):
-        self.summoner_id = summoner_id
-        self.name = name
+    def __init__(self, api, match_id, summoner_id, api_dict, summoner_cache, champion_cache):
+        self.match_id = match_id
+
+        # map participants to summoners
+        summoner_ids = {}
+        summoner_names = {}
+        for pid in api_dict['participantIdentities']:
+            sid = pid['player']['summonerId']
+            summoner_ids[pid['participantId']] = sid
+            summoner_names[sid] = pid['player']['summonerName']
+
+        # map participants to teams, champions, and positions
+        teams = {}
+        champions = {}
+        positions = {}
+        # determine victory
+        self.victory = None
+        for p in api_dict['participants']:
+            pid = p['participantId']
+            # participants to teams
+            teams[pid] = p['teamId']
+            # who won?
+            if summoner_id == summoner_ids[pid]:
+                self.victory = p['stats']['winner']
+            # participants to champions
+            cid = p['championId']
+            champions[pid] = champion_cache.setdefault(cid, Champion(api, cid))
+            # participants to positions
+            # FIXME: "timeline" field always returned?
+            positions[pid] = riot.position(p['timeline']['lane'], p['timeline']['role'])
+
+        # calculate which team is this summoner's team
+        teammate_team_id = None
+        for pid, sid in summoner_ids.items():
+            if sid == summoner_id:
+                teammate_team_id = teams[pid]
+
+        # calculate teammates for this match, include oneself
+        self.teammates = set(
+            summoner_cache.setdefault(sid, Summoner(sid, summoner_names[sid]))
+            for (pid, sid) in summoner_ids.items()
+            if teammate_team_id is not None and teams[pid] == teammate_team_id)
+
+        # remember champions and positions for teammates
+        self.champions = {sid:champions[pid] for (pid, sid) in summoner_ids.items()}
+        self.positions = {sid:positions[pid] for (pid, sid) in summoner_ids.items()}
 
     def __eq__(self, other):
-        return self.summoner_id == other.summoner_id
+        return self.match_id == other.match_id
 
     def __hash__(self):
-        return self.summoner_id
+        return self.match_id
 
 
 class Champion:
@@ -365,35 +356,92 @@ class Champion:
         return self.champion_id
 
 
-class SummonerChampion:
+class Winrate:
 
-    def __init__(self, api, position, champion_id, w, l):
-        self.position = position
-        self.champion = Champion(api, champion_id)
-        self.winrate_summoner = w / float(w + l)
-        k = max(10 - w - l, 0) # smooth over 10 matches
-        self.winrate_expected = ((k * 0.5) + w) / (k + w + l)
-        self.winrate_pessimistic = ((k * 0.0) + w) / (k + w + l)
-        self.wins = w
-        self.losses = l
-        self.sessions = w + l
+    def __init__(self):
+        self.wins = 0
+        self.losses = 0
+
+    @property
+    def match_count(self):
+        return self.wins + self.losses
+
+    @property
+    def winrate(self):
+        return self.wins / float(self.wins + self.losses)
+
+    @property
+    def k(self):
+        return max(10 - self.wins - self.losses, 0) # smooth over 10 matches
+
+    @property
+    def winrate_expected(self):
+        return ((self.k * 0.5) + self.wins) / (self.k + self.match_count)
+
+    @property
+    def winrate_pessimistic(self):
+        return ((self.k * 0.0) + self.wins) / (self.k + self.match_count)
+
+    def victory(self, victory):
+        if victory:
+            self.wins += 1
+        else:
+            self.losses += 1
 
 
-class Team:
+class Summoner(Winrate):
 
-    def __init__(self, summoners, summoner_champions):
-        self.heading = ', '.join([s.name for s in summoners])
-        self.subheading = 'TODO matches'
-        self.summoner_champions = summoner_champions
-        self.climb_recs = sorted(
-            [c for c in summoner_champions if c.winrate_summoner > 0.5],
-            key=operator.attrgetter('winrate_pessimistic', 'sessions'), reverse=True)[:5]
-        self.position_recs = []
+    def __init__(self, summoner_id, name):
+        super(Summoner, self).__init__()
+        self.summoner_id = summoner_id
+        self.name = name
+
+    def __eq__(self, other):
+        return self.summoner_id == other.summoner_id
+
+    def __hash__(self):
+        return self.summoner_id
+
+
+class Team(Winrate):
+
+    def __init__(self, summoners):
+        super(Team, self).__init__()
+        self.summoners = set(summoners)
+        self.spc = {}
+
+    @property
+    def climb_recs(self):
+        return sorted(
+            [spc for spc in self.spc.values() if spc.winrate > 0.5],
+            key=operator.attrgetter('winrate_pessimistic', 'match_count'), reverse=True)[:5]
+
+    @property
+    def position_recs(self):
+        position_recs = []
         for p in riot.POSITIONS:
-            for rec in sorted(summoner_champions, key=operator.attrgetter('winrate_expected', 'sessions'), reverse=True):
+            for rec in sorted(self.spc.values(), key=operator.attrgetter('winrate_expected', 'match_count'), reverse=True):
                 if rec.position == p:
-                    self.position_recs.append(rec)
+                    position_recs.append(rec)
                     break
+        return position_recs
+
+    @property
+    def summoner_position_champions(self):
+        return sorted(self.spc.values(), key=operator.attrgetter('match_count', 'winrate_expected'), reverse=True)
+
+    def summoner_champion_position(self, summoner, position, champion, victory):
+        key = (summoner, position, champion)
+        self.spc.setdefault(key, SummonerPositionChampion(summoner, position, champion)).victory(victory)
+
+
+class SummonerPositionChampion(Winrate):
+
+    def __init__(self, summoner, position, champion):
+        super(SummonerPositionChampion, self).__init__()
+        self.summoner = summoner
+        self.position = position
+        self.champion = champion
 
 
 class DataCollectorThread(threading.Thread):

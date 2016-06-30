@@ -1,7 +1,18 @@
+<%!
+import operator
+%>
+
 % for team in teams:
 
 <div class="page-header">
-    <h1>${team.heading | h} <small>${team.subheading | h}</small></h1>
+    <h1>
+        ${', '.join([s.name for s in sorted(team.summoners, key=operator.attrgetter('match_count'), reverse=True)]) | h}
+        <small>
+            ${team.wins} Wins,
+            ${team.losses} Losses,
+            ${round(100 * team.winrate)}% Winrate
+        </small>
+    </h1>
 </div>
 
 % if team.climb_recs:
@@ -24,7 +35,7 @@
                 <h3>${rec.champion.name | h}</h3>
                 <h4>${rec.wins} Wins</h4>
                 <h4>${rec.losses} Losses</h4>
-                <h4>${round(100 * rec.winrate_summoner)}% Winrate</h4>
+                <h4>${round(100 * rec.winrate)}% Winrate</h4>
             </div>
         </div>
     </div>
@@ -54,7 +65,7 @@
                 <h3>${rec.champion.name | h}</h3>
                 <h4>${rec.wins} Wins</h4>
                 <h4>${rec.losses} Losses</h4>
-                <h4>${round(100 * rec.winrate_summoner)}% Winrate</h4>
+                <h4>${round(100 * rec.winrate)}% Winrate</h4>
             </div>
         </div>
     </div>
@@ -64,7 +75,7 @@
 </div>
 % endif
 
-% if team.summoner_champions:
+% if team.summoner_position_champions:
 <div class="row">
 
     <div class="col-md-2 col-sm-12 col-xs-12">
@@ -78,6 +89,7 @@
         <table class="table table-striped">
             <thead>
                 <tr>
+                    <th>Summoner</th>
                     <th>Position</th>
                     <th>Champion</th>
                     <th>Games</th>
@@ -88,15 +100,16 @@
                 </tr>
             </thead>
             <tbody>
-                % for sc in team.summoner_champions:
+                % for spc in team.summoner_position_champions:
                 <tr>
-                    <td>${sc.position.capitalize()}</td>
-                    <td><img class="img-circle" style="height:1.5em;" src="/static/img/champion/${sc.champion.image}"> ${sc.champion.name | h}</td>
-                    <td>${sc.sessions}</td>
-                    <td>${sc.wins}</td>
-                    <td>${sc.losses}</td>
-                    <td>${round(100 * sc.winrate_summoner)}%</td>
-                    <td>${round(100 * sc.winrate_expected)}%</td>
+                    <td>${spc.summoner.name | h}</td>
+                    <td>${spc.position.capitalize()}</td>
+                    <td><img class="img-circle" style="height:1.5em;" src="/static/img/champion/${spc.champion.image}"> ${spc.champion.name | h}</td>
+                    <td>${spc.match_count}</td>
+                    <td>${spc.wins}</td>
+                    <td>${spc.losses}</td>
+                    <td>${round(100 * spc.winrate)}%</td>
+                    <td>${round(100 * spc.winrate_expected)}%</td>
                 </tr>
                 % endfor
             </tbody>
