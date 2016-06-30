@@ -30,6 +30,7 @@ import operator
     <div class="col-md-2 col-sm-4 col-xs-12 text-center">
         <div class="thumbnail well" style="padding: 0;">
             <h2><small>${rec.position.capitalize()}</small></h2>
+            <h3>${rec.summoner.name | h}</h3>
             <img class="img-rounded" src="/static/img/champion/${rec.champion.image}" alt="${rec.champion.key}">
             <div class="caption">
                 <h3>${rec.champion.name | h}</h3>
@@ -60,6 +61,7 @@ import operator
     <div class="col-md-2 col-sm-4 col-xs-12 text-center">
         <div class="thumbnail well" style="padding: 0;">
             <h2><small>${rec.position.capitalize()}</small></h2>
+            <h3>${rec.summoner.name | h}</h3>
             <img class="img-rounded" src="/static/img/champion/${rec.champion.image}" alt="${rec.champion.name}">
             <div class="caption">
                 <h3>${rec.champion.name | h}</h3>
