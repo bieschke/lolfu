@@ -6,7 +6,8 @@ import operator
 
 <div class="page-header">
     <h1>
-        ${', '.join([s.name for s in sorted(team.summoners, key=operator.attrgetter('match_count'), reverse=True)]) | h}
+        ${team.label | h}
+        <br/>
         <small>
             ${team.wins} Wins,
             ${team.losses} Losses,

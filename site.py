@@ -257,11 +257,14 @@ class Lolfu:
         recurring = set(s for (s, count) in match_counts.items() if s.summoner_id == summoner_id or count >= game_min)
 
         # return all iterations of recurring teammate combinations that include the summoner
+        solo_team = set(s for (s, count) in match_counts.items() if s.summoner_id == summoner_id)
         teams = []
+        if len(recurring) > 1:
+            teams.append(Team(solo_team, recurring.difference(solo_team))) # special team to capture *only* solo games
         for i in (1, 2, 3, 4, 5):
             for teammates in itertools.combinations(recurring, i):
                 if summoner_id in (s.summoner_id for s in teammates):
-                    teams.append(Team(teammates))
+                    teams.append(Team(teammates, set()))
 
         self.populate_team_stats(matches, teams)
 
@@ -275,7 +278,7 @@ class Lolfu:
                 summoner.victory(match.victory)
             for team in teams:
                 # only accumulate stats if this team played this match
-                if team.summoners.issubset(match.teammates):
+                if team.summoners.issubset(match.teammates) and not team.anti_summoners.intersection(match.teammates):
                     team.victory(match.victory)
                     for summoner in team.summoners:
                         sid = summoner.summoner_id
@@ -405,9 +408,10 @@ class Summoner(Winrate):
 
 class Team(Winrate):
 
-    def __init__(self, summoners):
+    def __init__(self, summoners, anti_summoners):
         super(Team, self).__init__()
         self.summoners = set(summoners)
+        self.anti_summoners = set(anti_summoners)
         self.spc = {}
 
     @property
@@ -415,6 +419,13 @@ class Team(Winrate):
         return sorted(
             [spc for spc in self.spc.values() if spc.winrate > 0.5],
             key=operator.attrgetter('winrate_pessimistic', 'match_count'), reverse=True)[:5]
+
+    @property
+    def label(self):
+        l = ', '.join([s.name for s in sorted(self.summoners, key=operator.attrgetter('match_count'), reverse=True)])
+        if len(self.summoners) == 1 and self.anti_summoners:
+            l += ' (Solo)'
+        return l
 
     @property
     def position_recs(self):
