@@ -431,7 +431,7 @@ class Team(Winrate):
     def position_recs(self):
         position_recs = []
         for p in riot.POSITIONS:
-            for rec in sorted(self.spc.values(), key=operator.attrgetter('winrate_expected', 'match_count'), reverse=True):
+            for rec in sorted(self.spc.values(), key=operator.attrgetter('winrate_pessimistic', 'match_count'), reverse=True):
                 if rec.position == p:
                     position_recs.append(rec)
                     break
