@@ -418,7 +418,7 @@ class Team(Winrate):
     def climb_recs(self):
         return sorted(
             [spc for spc in self.spc.values() if spc.winrate > 0.5],
-            key=operator.attrgetter('winrate_pessimistic', 'match_count'), reverse=True)[:5]
+            key=operator.attrgetter('winrate_pessimistic', 'winrate_expected', 'match_count'), reverse=True)[:5]
 
     @property
     def label(self):
@@ -431,7 +431,7 @@ class Team(Winrate):
     def position_recs(self):
         position_recs = []
         for p in riot.POSITIONS:
-            for rec in sorted(self.spc.values(), key=operator.attrgetter('winrate_pessimistic', 'match_count'), reverse=True):
+            for rec in sorted(self.spc.values(), key=operator.attrgetter('winrate_pessimistic', 'winrate_expected', 'match_count'), reverse=True):
                 if rec.position == p:
                     position_recs.append(rec)
                     break
